@@ -2,7 +2,7 @@
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Graduation, MapPin, Clock, BookOpen, ExternalLink } from "lucide-react";
+import { GraduationCap, MapPin, Clock, BookOpen, ExternalLink } from "lucide-react";
 
 interface ProgramProps {
   id: string;
@@ -37,7 +37,7 @@ const ProgramCard = ({
         )}
         <CardTitle className="text-xl">{name}</CardTitle>
         <CardDescription className="flex items-center">
-          <Graduation className="h-4 w-4 mr-1" />
+          <GraduationCap className="h-4 w-4 mr-1" />
           {institution}
         </CardDescription>
       </CardHeader>

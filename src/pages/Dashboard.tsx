@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { BookOpen, Users, School, Award, Calendar, Target, MessageCircle, ArrowRight } from "lucide-react";
 import StatsCard from "@/components/dashboard/StatsCard";
 import ProgramCard from "@/components/program/ProgramCard";
@@ -116,7 +117,7 @@ const Dashboard = () => {
                       <span className="font-medium">{program.name}</span>
                       <span className="text-sm text-muted-foreground">{program.institution}</span>
                     </div>
-                    <Badge>{program.match}%</Badge>
+                    <CustomBadge className="bg-counsel-100 text-counsel-800">{program.match}%</CustomBadge>
                   </div>
                 ))}
                 <Button variant="ghost" size="sm" className="w-full" asChild>
@@ -167,7 +168,7 @@ const Dashboard = () => {
                     <School className="h-5 w-5 mr-2 text-counsel-600" />
                     <span>Academic Background</span>
                   </div>
-                  <Badge variant="outline">Complete</Badge>
+                  <CustomBadge className="bg-counsel-100 text-counsel-800 border-counsel-200">Complete</CustomBadge>
                 </div>
                 
                 <div className="flex justify-between items-center">
@@ -175,7 +176,7 @@ const Dashboard = () => {
                     <Target className="h-5 w-5 mr-2 text-counsel-600" />
                     <span>Career Goals</span>
                   </div>
-                  <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50">75%</Badge>
+                  <CustomBadge className="text-amber-600 border-amber-200 bg-amber-50">75%</CustomBadge>
                 </div>
                 
                 <div className="flex justify-between items-center">
@@ -183,7 +184,7 @@ const Dashboard = () => {
                     <Award className="h-5 w-5 mr-2 text-counsel-600" />
                     <span>Test Scores</span>
                   </div>
-                  <Badge variant="outline" className="text-red-600 border-red-200 bg-red-50">Missing</Badge>
+                  <CustomBadge className="text-red-600 border-red-200 bg-red-50">Missing</CustomBadge>
                 </div>
                 
                 <Button asChild>
@@ -239,8 +240,8 @@ const Dashboard = () => {
   );
 };
 
-// Helper component
-const Badge = ({ children, className }: { children: React.ReactNode, className?: string }) => (
+// Helper components
+const CustomBadge = ({ children, className }: { children: React.ReactNode, className?: string }) => (
   <span className={`px-2 py-1 rounded-full text-xs font-medium ${className || 'bg-counsel-100 text-counsel-800'}`}>
     {children}
   </span>

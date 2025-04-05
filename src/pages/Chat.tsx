@@ -1,14 +1,19 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send } from "lucide-react";
+import { Send, User, GraduationCap, MapPin, BookOpen, Calendar, Award, Briefcase, DollarSign, Clock, Languages, Mail, Pencil, X, Eye } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import PageLayout from "@/components/layout/PageLayout";
 import { api } from "@/services/auth";
 import StudentOnboardingForm from "@/components/StudentOnboardingForm";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 interface Message {
   id: string;
@@ -21,10 +26,39 @@ interface Student {
   id: string;
   name?: string;
   email?: string;
-  academic_background?: string;
-  preferences?: string;
-  conversation_history?: Message[];
+  academic_background?: {
+    current_education?: string;
+    subjects?: string[];
+    grades?: string;
+    institution?: string;
+    year_of_completion?: number;
+    achievements?: string[];
+  };
+  preferred_location?: string[];
   field_of_study?: string;
+  exam_scores?: Array<{
+    exam_name: string;
+    score: string;
+    date_taken: string;
+    validity_period: number;
+  }>;
+  additional_preferences?: {
+    study_mode?: string;
+    budget_range?: string;
+    duration_preference?: string;
+    start_date_preference?: string;
+    special_requirements?: string[];
+    career_goals?: string[];
+    preferred_languages?: string[];
+  };
+  conversation_history?: {
+    messages?: Array<{
+      id: string;
+      role: string;
+      content: string;
+      timestamp: string;
+    }>;
+  };
 }
 
 interface ConversationResponse {
@@ -73,6 +107,8 @@ const Chat = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const [isEditing, setIsEditing] = useState(false);
+  const [showProfileDialog, setShowProfileDialog] = useState(false);
 
   useEffect(() => {
     initializeStudent();
@@ -145,7 +181,9 @@ const Chat = () => {
     }
   };
 
-  const handleEmailConfirmation = () => {
+  const handleEmailConfirmation = (e: React.FormEvent) => {
+    e.preventDefault();
+    
     if (!storedStudentData) return;
     
     // Check if the entered email matches the stored email
@@ -240,6 +278,24 @@ const Chat = () => {
     }
   };
 
+  const handleProfileUpdate = async (updatedData: any) => {
+    try {
+      const response = await api.put(`/api/students/${student.id}/update`, updatedData);
+      setStudent(response.data);
+      setIsEditing(false);
+      toast({
+        title: "Success",
+        description: "Profile updated successfully!",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to update profile. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Function to mask email for display
   const maskEmail = (email: string) => {
     if (!email) return "";
@@ -274,7 +330,7 @@ const Chat = () => {
     if (!input.trim() || !student) return;
     
     const userMessage = {
-      id: Date.now().toString(),
+          id: Date.now().toString(),
       role: "user" as const,
       content: input.trim(),
       timestamp: new Date(),
@@ -313,7 +369,7 @@ const Chat = () => {
         if (result.response) {
           const assistantMessage = {
             id: (Date.now() + 1).toString(),
-            role: "assistant" as const,
+          role: "assistant" as const,
             content: result.response,
             timestamp: new Date(),
           };
@@ -370,123 +426,343 @@ const Chat = () => {
     }
   };
 
-  if (initializing) {
-    return (
-      <PageLayout>
-        <div className="container py-8">
-          <div className="text-center">Initializing chat...</div>
-        </div>
-      </PageLayout>
-    );
-  }
+  // Function to get initials from name
+  const getInitials = (name: string) => {
+    if (!name) return "?";
+    return name
+      .split(" ")
+      .map(part => part[0])
+      .join("")
+      .toUpperCase()
+      .substring(0, 2);
+  };
 
-  if (showEmailConfirmation && storedStudentData) {
-    return (
-      <PageLayout>
-        <div className="container py-8">
-          <Card>
-            <CardContent className="p-6">
-              <h2 className="text-2xl font-bold mb-4">Welcome Back!</h2>
-              <p className="mb-4">
-                We found a previous session for {maskEmail(storedStudentData.email)}.
-                Please confirm your email to continue your conversation.
-              </p>
-              
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="email">Email Address</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={emailConfirmation}
-                    onChange={(e) => setEmailConfirmation(e.target.value)}
-                    placeholder="Enter your full email address"
-                    className={emailConfirmationError ? "border-red-500" : ""}
-                  />
-                  {emailConfirmationError && (
-                    <p className="text-red-500 text-sm mt-1">{emailConfirmationError}</p>
-                  )}
-                </div>
-                
-                <div className="flex gap-4">
-                  <Button 
-                    onClick={handleEmailConfirmation}
-                    className="flex-1"
-                  >
-                    Continue Session
-                  </Button>
-                  <Button 
-                    onClick={startNewChat}
-                    variant="outline"
-                    className="flex-1"
-                  >
-                    Start New Chat
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </PageLayout>
-    );
-  }
-
-  if (showOnboarding) {
-    return (
-      <PageLayout>
-        <div className="container py-8">
-          <StudentOnboardingForm onComplete={handleOnboardingComplete} />
-        </div>
-      </PageLayout>
-    );
-  }
+  // Function to format date
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "Not specified";
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString();
+    } catch (e) {
+      return dateString;
+    }
+  };
 
   return (
     <PageLayout>
       <div className="container py-8">
-        <Card className="h-[calc(100vh-12rem)]">
-          <CardContent className="p-6 h-full flex flex-col">
-            <ScrollArea className="flex-1 pr-4 overflow-y-auto" ref={chatContainerRef}>
-              <div className="space-y-4">
-                {Array.isArray(messages) && messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex ${
-                      message.role === "assistant" ? "justify-start" : "justify-end"
-                    }`}
-                  >
-                    <div
-                      className={`rounded-lg px-4 py-2 max-w-[80%] ${
-                        message.role === "assistant"
-                          ? "bg-muted"
-                          : "bg-primary text-primary-foreground"
-                      }`}
-                    >
-                      <p className="whitespace-pre-wrap">{message.content}</p>
-                      <p className="text-xs mt-1 opacity-70">
-                        {new Date(message.timestamp).toLocaleTimeString()}
+        {initializing ? (
+          <div className="text-center">Loading...</div>
+        ) : showOnboarding ? (
+          <StudentOnboardingForm onComplete={handleOnboardingComplete} />
+        ) : showEmailConfirmation ? (
+          <div className="container py-8">
+            <Card>
+              <CardContent className="p-6">
+                <h2 className="text-2xl font-bold mb-4">Welcome Back!</h2>
+                <p className="mb-4">
+                  We found a previous session for {maskEmail(storedStudentData?.email)}.
+                  Please confirm your email to continue your conversation.
+                </p>
+                <form onSubmit={handleEmailConfirmation} className="space-y-4">
+                  <Input
+                    type="email"
+                    value={emailConfirmation}
+                    onChange={(e) => setEmailConfirmation(e.target.value)}
+                    placeholder="Enter your email"
+                    required
+                  />
+                  <Button type="submit" disabled={loading}>
+                    {loading ? "Confirming..." : "Confirm Email"}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
+        ) : (
+          <div className="flex flex-col h-[calc(100vh-8rem)]">
+            {/* Top Bar with Profile Button */}
+            <div className="flex justify-between items-center mb-4">
+              <h1 className="text-2xl font-bold">AI Counselor Chat</h1>
+              <Button 
+                variant="outline" 
+                className="flex items-center gap-2"
+                onClick={() => {
+                  setShowProfileDialog(true);
+                  setIsEditing(false);
+                }}
+              >
+                <User className="h-4 w-4" />
+                <span>Student Profile</span>
+              </Button>
+            </div>
+            
+            {/* Chat Area - Full Width */}
+            <Card className="flex-1 overflow-hidden">
+              <CardContent className="p-6 h-full flex flex-col">
+                <ScrollArea className="flex-1 pr-4 overflow-y-auto" ref={chatContainerRef}>
+                  <div className="space-y-4">
+                    {Array.isArray(messages) && messages.map((message) => (
+                      <div
+                        key={message.id}
+                        className={`flex ${
+                          message.role === "assistant" ? "justify-start" : "justify-end"
+                        }`}
+                      >
+                        <div
+                          className={`rounded-lg px-4 py-2 max-w-[80%] ${
+                            message.role === "assistant"
+                              ? "bg-muted"
+                              : "bg-primary text-primary-foreground"
+                          }`}
+                        >
+                          <p className="whitespace-pre-wrap">{message.content}</p>
+                          <p className="text-xs mt-1 opacity-70">
+                            {new Date(message.timestamp).toLocaleTimeString()}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                    <div ref={messagesEndRef} />
+                  </div>
+                </ScrollArea>
+
+                <form onSubmit={handleSubmit} className="mt-4 flex gap-2">
+                  <Input
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    placeholder="Type your message..."
+                    disabled={loading}
+                  />
+                  <Button type="submit" disabled={loading || !input.trim()}>
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </div>
+
+      {/* Student Profile Dialog */}
+      <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>
+        <DialogContent className="max-w-4xl h-[90vh] overflow-y-auto">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-bold">Student Profile</h2>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => {
+                  setIsEditing(!isEditing);
+                }}
+                className="flex items-center gap-1 mr-[50px]"
+              >
+                {isEditing ? <Eye className="h-3 w-3" /> : <Pencil className="h-3 w-3" />}
+                <span>{isEditing ? "View" : "Edit"}</span>
+              </Button>
+            </div>
+          </div>
+          
+          {isEditing ? (
+            <StudentOnboardingForm 
+              onComplete={handleProfileUpdate}
+              initialData={student}
+              isEditing={true}
+            />
+          ) : (
+            <ScrollArea className="h-[calc(90vh-8rem)]">
+              <div className="space-y-6">
+                {/* Profile Header */}
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-12 w-12">
+                    <AvatarImage src="" alt={student?.name || "Student"} />
+                    <AvatarFallback>{getInitials(student?.name || "Student")}</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <h3 className="font-medium">{student?.name || "Student"}</h3>
+                    <p className="text-sm text-muted-foreground">{student?.email || "No email provided"}</p>
+                  </div>
+                </div>
+                
+                <Separator />
+
+                {/* Academic Background */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <GraduationCap className="h-4 w-4 text-muted-foreground" />
+                    <h4 className="font-medium">Academic Background</h4>
+                  </div>
+                  <div className="space-y-2 pl-6">
+                    {student?.academic_background ? (
+                      <>
+                        <div>
+                          <p className="text-sm font-medium">Education</p>
+                          <p className="text-sm text-muted-foreground">
+                            {student.academic_background.current_education || "Not specified"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">Subjects</p>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {student.academic_background.subjects && student.academic_background.subjects.length > 0 ? (
+                              student.academic_background.subjects.map((subject, index) => (
+                                <Badge key={index} variant="outline" className="text-xs">
+                                  {subject}
+                                </Badge>
+                              ))
+                            ) : (
+                              <p className="text-sm text-muted-foreground">Not specified</p>
+                            )}
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">Grades</p>
+                          <p className="text-sm text-muted-foreground">
+                            {student.academic_background.grades || "Not specified"}
+                          </p>
+                        </div>
+                        {student.academic_background.institution && (
+                          <div>
+                            <p className="text-sm font-medium">Institution</p>
+                            <p className="text-sm text-muted-foreground">
+                              {student.academic_background.institution}
+                            </p>
+                          </div>
+                        )}
+                        {student.academic_background.year_of_completion && (
+                          <div>
+                            <p className="text-sm font-medium">Year of Completion</p>
+                            <p className="text-sm text-muted-foreground">
+                              {student.academic_background.year_of_completion}
+                            </p>
+                          </div>
+                        )}
+                        {student.academic_background.achievements && student.academic_background.achievements.length > 0 && (
+                          <div>
+                            <p className="text-sm font-medium">Achievements</p>
+                            <ul className="text-sm text-muted-foreground list-disc pl-2 mt-1">
+                              {student.academic_background.achievements.map((achievement, index) => (
+                                <li key={index}>{achievement}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No academic information available</p>
+                    )}
+                  </div>
+                </div>
+                
+                <Separator />
+
+                {/* Preferences */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="h-4 w-4 text-muted-foreground" />
+                    <h4 className="font-medium">Preferences</h4>
+                  </div>
+                  <div className="space-y-2 pl-6">
+                    <div>
+                      <p className="text-sm font-medium">Field of Study</p>
+                      <p className="text-sm text-muted-foreground">
+                        {student?.field_of_study || "Not specified"}
                       </p>
                     </div>
+                    <div>
+                      <p className="text-sm font-medium">Preferred Locations</p>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {student?.preferred_location && Array.isArray(student.preferred_location) && student.preferred_location.length > 0 ? (
+                          student.preferred_location.map((location, index) => (
+                            <Badge key={index} variant="outline" className="text-xs">
+                              {location}
+                            </Badge>
+                          ))
+                        ) : (
+                          <p className="text-sm text-muted-foreground">Not specified</p>
+                        )}
+                      </div>
+                    </div>
+                    {student?.additional_preferences && (
+                      <>
+                        {student.additional_preferences.study_mode && (
+                          <div>
+                            <p className="text-sm font-medium">Study Mode</p>
+                            <p className="text-sm text-muted-foreground">
+                              {student.additional_preferences.study_mode}
+                            </p>
+                          </div>
+                        )}
+                        {student.additional_preferences.budget_range && (
+                          <div>
+                            <p className="text-sm font-medium">Budget Range</p>
+                            <p className="text-sm text-muted-foreground">
+                              {student.additional_preferences.budget_range}
+                            </p>
+                          </div>
+                        )}
+                        {student.additional_preferences.duration_preference && (
+                          <div>
+                            <p className="text-sm font-medium">Duration</p>
+                            <p className="text-sm text-muted-foreground">
+                              {student.additional_preferences.duration_preference}
+                            </p>
+                          </div>
+                        )}
+                        {student.additional_preferences.start_date_preference && (
+                          <div>
+                            <p className="text-sm font-medium">Start Date</p>
+                            <p className="text-sm text-muted-foreground">
+                              {formatDate(student.additional_preferences.start_date_preference)}
+                            </p>
+                          </div>
+                        )}
+                        {student.additional_preferences.career_goals && student.additional_preferences.career_goals.length > 0 && (
+                          <div>
+                            <p className="text-sm font-medium">Career Goals</p>
+                            <ul className="text-sm text-muted-foreground list-disc pl-2 mt-1">
+                              {student.additional_preferences.career_goals.map((goal, index) => (
+                                <li key={index}>{goal}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
-                ))}
-                <div ref={messagesEndRef} />
+                </div>
+                
+                {/* Exam Scores */}
+                {student?.exam_scores && student.exam_scores.length > 0 && (
+                  <>
+                    <Separator />
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Award className="h-4 w-4 text-muted-foreground" />
+                        <h4 className="font-medium">Exam Scores</h4>
+                      </div>
+                      <div className="space-y-2 pl-6">
+                        {student.exam_scores.map((exam, index) => (
+                          <div key={index} className="border rounded-md p-2">
+                            <p className="text-sm font-medium">{exam.exam_name}</p>
+                            <p className="text-sm text-muted-foreground">Score: {exam.score}</p>
+                            {exam.date_taken && (
+                              <p className="text-xs text-muted-foreground">
+                                Taken: {formatDate(exam.date_taken)}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </ScrollArea>
-
-            <form onSubmit={handleSubmit} className="mt-4 flex gap-2">
-              <Input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Type your message..."
-                disabled={loading}
-              />
-              <Button type="submit" disabled={loading || !input.trim()}>
-                <Send className="h-4 w-4" />
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </PageLayout>
   );
 };

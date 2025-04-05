@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,8 @@ import { X } from "lucide-react";
 
 interface StudentOnboardingFormProps {
   onComplete: (studentId: string) => void;
+  initialData?: any;
+  isEditing?: boolean;
 }
 
 interface ExamScore {
@@ -29,7 +31,7 @@ const countries = [
   "Spain", "New Zealand", "Ireland"
 ];
 
-const StudentOnboardingForm = ({ onComplete }: StudentOnboardingFormProps) => {
+const StudentOnboardingForm = ({ onComplete, initialData, isEditing = false }: StudentOnboardingFormProps) => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [currentEducation, setCurrentEducation] = useState("");
@@ -54,6 +56,29 @@ const StudentOnboardingForm = ({ onComplete }: StudentOnboardingFormProps) => {
   const [careerGoals, setCareerGoals] = useState("");
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+
+  // Initialize form with initial data if provided
+  useEffect(() => {
+    if (initialData) {
+      setName(initialData.name || "");
+      setEmail(initialData.email || "");
+      setCurrentEducation(initialData.academic_background?.current_education || "");
+      setSubjects(initialData.academic_background?.subjects?.join(", ") || "");
+      setGrades(initialData.academic_background?.grades || "");
+      setInstitution(initialData.academic_background?.institution || "");
+      setYearOfCompletion(initialData.academic_background?.year_of_completion?.toString() || "");
+      setAchievements(initialData.academic_background?.achievements?.join(", ") || "");
+      setPreferredLocations(initialData.preferred_location || []);
+      setFieldOfStudy(initialData.field_of_study || "");
+      setExamScores(initialData.exam_scores || []);
+      setStudyMode(initialData.additional_preferences?.study_mode || "");
+      setBudgetRange(initialData.additional_preferences?.budget_range || "");
+      setDurationPreference(initialData.additional_preferences?.duration_preference || "");
+      setStartDate(initialData.additional_preferences?.start_date_preference?.split("T")[0] || "");
+      setSpecialRequirements(initialData.additional_preferences?.special_requirements?.join(", ") || "");
+      setCareerGoals(initialData.additional_preferences?.career_goals?.join(", ") || "");
+    }
+  }, [initialData]);
 
   const populateSampleData = () => {
     setName("John Doe");
@@ -197,55 +222,22 @@ const StudentOnboardingForm = ({ onComplete }: StudentOnboardingFormProps) => {
       // Remove any undefined values
       const cleanPayload = JSON.parse(JSON.stringify(payload));
       
-      // Log the payload for debugging
-      console.log("=== API REQUEST DEBUG ===");
-      console.log("Request URL:", "/api/students");
-      console.log("Request Method:", "POST");
-      console.log("Request Headers:", {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer [REDACTED]"
-      });
-      console.log("Request Payload:", JSON.stringify(cleanPayload, null, 2));
-      
-      // Log each date field separately for debugging
-      console.log("=== DATE FIELDS DEBUG ===");
-      if (cleanPayload.exam_scores) {
-        cleanPayload.exam_scores.forEach((score, index) => {
-          console.log(`Exam ${index + 1} date_taken:`, score.date_taken);
-        });
+      if (isEditing) {
+        onComplete(cleanPayload);
+      } else {
+        const response = await api.post("/api/students", cleanPayload);
+        localStorage.setItem("studentId", response.data.id);
+        onComplete(response.data.id);
       }
-      if (cleanPayload.additional_preferences?.start_date_preference) {
-        console.log("Start date preference:", cleanPayload.additional_preferences.start_date_preference);
-      }
-      
-      const response = await api.post("/api/students", cleanPayload);
-      
-      // Log the response for debugging
-      console.log("=== API RESPONSE DEBUG ===");
-      console.log("Response Status:", response.status);
-      console.log("Response Headers:", response.headers);
-      console.log("Response Data:", JSON.stringify(response.data, null, 2));
-
-      localStorage.setItem("studentId", response.data.id);
       
       toast({
         title: "Success",
-        description: "Profile created successfully!",
+        description: isEditing ? "Profile updated successfully!" : "Profile created successfully!",
       });
-
-      onComplete(response.data.id);
     } catch (error: any) {
-      // Log the error for debugging
-      console.error("=== API ERROR DEBUG ===");
-      console.error("Error Status:", error.response?.status);
-      console.error("Error Headers:", error.response?.headers);
-      console.error("Error Data:", error.response?.data);
-      console.error("Error Message:", error.message);
-      console.error("Full Error:", error);
-      
       toast({
         title: "Error",
-        description: error.response?.data?.message || "Failed to create profile. Please try again.",
+        description: error.response?.data?.message || "Failed to save profile. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -256,9 +248,9 @@ const StudentOnboardingForm = ({ onComplete }: StudentOnboardingFormProps) => {
   return (
     <Card className="w-full max-w-2xl mx-auto">
       <CardHeader>
-        <CardTitle>Welcome to CounselAI</CardTitle>
+        <CardTitle>{isEditing ? "Edit Profile" : "Welcome to CounselAI"}</CardTitle>
         <CardDescription>
-          Please tell us about yourself so we can provide better guidance
+          {isEditing ? "Update your profile information" : "Please tell us about yourself so we can provide better guidance"}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -543,7 +535,7 @@ const StudentOnboardingForm = ({ onComplete }: StudentOnboardingFormProps) => {
           </div>
 
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Creating Profile..." : "Start Chat"}
+            {loading ? "Saving Profile..." : "Save Profile"}
           </Button>
         </form>
       </CardContent>

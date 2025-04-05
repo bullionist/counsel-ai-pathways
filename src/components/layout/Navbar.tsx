@@ -1,13 +1,17 @@
 import { Button } from "@/components/ui/button";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { BookOpen, Menu, Lock, LogOut } from "lucide-react";
 import { isAdminAuthenticated, logoutAdmin } from "@/services/auth";
 import { useToast } from "@/components/ui/use-toast";
 
 const Navbar = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const isAdmin = isAdminAuthenticated();
+  
+  // Check if we're on the chat page
+  const isChatPage = location.pathname === '/chat';
 
   const handleLogout = () => {
     logoutAdmin();
@@ -29,18 +33,23 @@ const Navbar = () => {
         </div>
         
         <div className="flex items-center gap-4">
-          {isAdmin ? (
-            <Button variant="ghost" size="sm" onClick={handleLogout} className="flex items-center gap-2">
-              <LogOut className="h-4 w-4" />
-              Logout
-            </Button>
-          ) : (
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/admin/login" className="flex items-center gap-2">
-                <Lock className="h-4 w-4" />
-                Admin Login
-              </Link>
-            </Button>
+          {/* Only show admin login/logout if not on chat page */}
+          {!isChatPage && (
+            <>
+              {isAdmin ? (
+                <Button variant="ghost" size="sm" onClick={handleLogout} className="flex items-center gap-2">
+                  <LogOut className="h-4 w-4" />
+                  Logout
+                </Button>
+              ) : (
+                <Button variant="ghost" size="sm" asChild>
+                  <Link to="/admin/login" className="flex items-center gap-2">
+                    <Lock className="h-4 w-4" />
+                    Admin Login
+                  </Link>
+                </Button>
+              )}
+            </>
           )}
           
           <Button 

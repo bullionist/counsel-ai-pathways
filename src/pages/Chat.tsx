@@ -66,49 +66,74 @@ const Chat = () => {
   const [initializing, setInitializing] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     initializeStudent();
   }, []);
 
+  // Add auto-scroll effect when messages change
   useEffect(() => {
-    scrollToBottom();
+    // Use setTimeout to ensure the DOM has updated before scrolling
+    setTimeout(() => {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
+      }
+    }, 100);
   }, [messages]);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
 
   const initializeStudent = async () => {
     try {
       // Try to get existing student ID from local storage
       const storedStudentId = localStorage.getItem("studentId");
+      console.log("Stored student ID:", storedStudentId);
       
       if (storedStudentId) {
         try {
           // Get existing student profile
+          console.log("Fetching student profile for ID:", storedStudentId);
           const response = await api.get(`/api/students/${storedStudentId}`);
+          console.log("API Response:", response);
           
           // Check if the response contains valid student data
           if (response.data && response.data.id) {
+            console.log("Valid student data received:", response.data);
             setStudent(response.data);
-            if (response.data.conversation_history && Array.isArray(response.data.conversation_history)) {
-              setMessages(response.data.conversation_history);
+            
+            // Enhanced chat history loading - handle nested structure
+            if (response.data.conversation_history && 
+                response.data.conversation_history.messages && 
+                Array.isArray(response.data.conversation_history.messages)) {
+              
+              console.log("Loading existing conversation history:", response.data.conversation_history.messages.length, "messages");
+              console.log("Conversation history data:", response.data.conversation_history.messages);
+              
+              // Ensure all messages have proper timestamps and IDs
+              const formattedMessages = response.data.conversation_history.messages.map((msg, index) => ({
+                id: msg.id || `msg-${index}`,
+                role: msg.role,
+                content: msg.content,
+                timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date()
+              }));
+              
+              console.log("Formatted messages:", formattedMessages);
+              setMessages(formattedMessages);
             } else {
               // Add welcome message for existing students without conversation history
+              console.log("No existing conversation history found in response:", response.data);
               setMessages([
                 {
                   id: "welcome",
                   role: "assistant",
-                  content: "Welcome back! How can I help you today?",
+                  content: `Welcome back ${response.data.name || 'there'}! How can I help you today?`,
                   timestamp: new Date(),
                 },
               ]);
             }
           } else {
             // If student data is invalid or missing, show onboarding form
-            console.log("Student data is invalid or missing, showing onboarding form");
+            console.log("Student data is invalid or missing:", response.data);
             localStorage.removeItem("studentId"); // Clear invalid student ID
             setShowOnboarding(true);
           }
@@ -120,6 +145,7 @@ const Chat = () => {
         }
       } else {
         // Show onboarding form for new students
+        console.log("No stored student ID found, showing onboarding form");
         setShowOnboarding(true);
       }
     } catch (error) {
@@ -287,7 +313,7 @@ const Chat = () => {
       <div className="container py-8">
         <Card className="h-[calc(100vh-12rem)]">
           <CardContent className="p-6 h-full flex flex-col">
-            <ScrollArea className="flex-1 pr-4">
+            <ScrollArea className="flex-1 pr-4 overflow-y-auto" ref={chatContainerRef}>
               <div className="space-y-4">
                 {Array.isArray(messages) && messages.map((message) => (
                   <div

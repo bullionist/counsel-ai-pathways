@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, User, GraduationCap, MapPin, BookOpen, Calendar, Award, Briefcase, DollarSign, Clock, Languages, Mail, Pencil, X, Eye } from "lucide-react";
+import { Send, User, GraduationCap, MapPin, BookOpen, Calendar, Award, Briefcase, DollarSign, Clock, Languages, Mail, Pencil, X, Eye, Mic, MicOff, Volume2, VolumeX } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import PageLayout from "@/components/layout/PageLayout";
 import { api } from "@/services/auth";
@@ -14,6 +14,60 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
+// Add SpeechRecognition type definitions
+interface SpeechRecognitionEvent extends Event {
+  resultIndex: number;
+  results: SpeechRecognitionResultList;
+}
+
+interface SpeechRecognitionResultList {
+  length: number;
+  item(index: number): SpeechRecognitionResult;
+  [index: number]: SpeechRecognitionResult;
+}
+
+interface SpeechRecognitionResult {
+  isFinal: boolean;
+  length: number;
+  item(index: number): SpeechRecognitionAlternative;
+  [index: number]: SpeechRecognitionAlternative;
+}
+
+interface SpeechRecognitionAlternative {
+  transcript: string;
+  confidence: number;
+}
+
+interface SpeechRecognitionErrorEvent extends Event {
+  error: string;
+  message: string;
+}
+
+interface SpeechRecognition extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: (event: SpeechRecognitionEvent) => void;
+  onerror: (event: SpeechRecognitionErrorEvent) => void;
+  onend: () => void;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+}
+
+interface SpeechRecognitionConstructor {
+  new (): SpeechRecognition;
+  prototype: SpeechRecognition;
+}
+
+declare global {
+  interface Window {
+    SpeechRecognition?: SpeechRecognitionConstructor;
+    webkitSpeechRecognition?: SpeechRecognitionConstructor;
+  }
+}
 
 interface Message {
   id: string;
@@ -109,6 +163,15 @@ const Chat = () => {
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [showProfileDialog, setShowProfileDialog] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [transcript, setTranscript] = useState("");
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
+  const [autoSpeak, setAutoSpeak] = useState(true);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   useEffect(() => {
     initializeStudent();
@@ -123,6 +186,66 @@ const Chat = () => {
       }
     }, 100);
   }, [messages]);
+
+  // Initialize speech recognition
+  useEffect(() => {
+    // We'll create a new instance when needed instead of initializing here
+    return () => {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch (error) {
+          console.error("Error stopping speech recognition:", error);
+        }
+      }
+    };
+  }, []);
+
+  // Add keyboard shortcut for voice input
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Alt + M to toggle microphone
+      if (e.altKey && e.key === 'm') {
+        e.preventDefault();
+        toggleRecording();
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isRecording]);
+
+  // Initialize speech synthesis
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      // Create a speech synthesis utterance
+      const utterance = new SpeechSynthesisUtterance();
+      utterance.rate = 1.0;
+      utterance.pitch = 1.0;
+      utterance.volume = 1.0;
+      
+      // Set up event handlers
+      utterance.onend = () => {
+        setIsSpeaking(false);
+      };
+      
+      utterance.onerror = (event) => {
+        console.error('Speech synthesis error:', event);
+        setIsSpeaking(false);
+      };
+      
+      speechSynthesisRef.current = utterance;
+      
+      return () => {
+        if (speechSynthesisRef.current) {
+          window.speechSynthesis.cancel();
+        }
+      };
+    }
+  }, []);
 
   const initializeStudent = async () => {
     try {
@@ -329,8 +452,22 @@ const Chat = () => {
     
     if (!input.trim() || !student) return;
     
+    // Stop recording if active
+    if (isRecording && recognitionRef.current) {
+      try {
+        // Set isRecording to false first to prevent the onend handler from restarting
+        setIsRecording(false);
+        // Then stop the recognition
+        recognitionRef.current.stop();
+        recognitionRef.current = null;
+      } catch (error) {
+        console.error("Error stopping speech recognition:", error);
+        setIsRecording(false);
+      }
+    }
+    
     const userMessage = {
-          id: Date.now().toString(),
+      id: Date.now().toString(),
       role: "user" as const,
       content: input.trim(),
       timestamp: new Date(),
@@ -369,11 +506,16 @@ const Chat = () => {
         if (result.response) {
           const assistantMessage = {
             id: (Date.now() + 1).toString(),
-          role: "assistant" as const,
+            role: "assistant" as const,
             content: result.response,
             timestamp: new Date(),
           };
           setMessages((prev) => [...prev, assistantMessage]);
+          
+          // Auto-speak the response if enabled
+          if (autoSpeak) {
+            speakText(result.response, assistantMessage.id);
+          }
         }
         
         // If it's a profile update, we could update the student profile display
@@ -448,6 +590,208 @@ const Chat = () => {
     }
   };
 
+  // Toggle recording
+  const toggleRecording = () => {
+    if (typeof window === 'undefined' || (!window.SpeechRecognition && !window.webkitSpeechRecognition)) {
+      toast({
+        title: "Speech Recognition Not Supported",
+        description: "Your browser doesn't support speech recognition. Please use a modern browser like Chrome.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (isRecording) {
+      // Stop recording
+      try {
+        if (recognitionRef.current) {
+          recognitionRef.current.stop();
+          recognitionRef.current = null;
+        }
+        setIsRecording(false);
+      } catch (error) {
+        console.error("Error stopping speech recognition:", error);
+        setIsRecording(false);
+      }
+    } else {
+      // Start recording
+      try {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+        
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'en-US';
+        
+        recognition.onresult = (event: SpeechRecognitionEvent) => {
+          const current = event.resultIndex;
+          const result = event.results[current];
+          const transcriptText = result[0].transcript;
+          
+          setTranscript(transcriptText);
+          
+          if (result.isFinal) {
+            setInput(transcriptText);
+          }
+        };
+        
+        recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+          console.error('Speech recognition error:', event.error);
+          setIsRecording(false);
+          recognitionRef.current = null;
+          
+          if (event.error !== 'aborted') {
+            toast({
+              title: "Speech Recognition Error",
+              description: `Error: ${event.error}. Please try again.`,
+              variant: "destructive",
+            });
+          }
+        };
+        
+        recognition.onend = () => {
+          // Only restart if we're still supposed to be recording
+          if (isRecording) {
+            try {
+              recognition.start();
+            } catch (error) {
+              console.error("Error restarting speech recognition:", error);
+              setIsRecording(false);
+              recognitionRef.current = null;
+            }
+          }
+        };
+        
+        recognition.start();
+        recognitionRef.current = recognition;
+        setIsRecording(true);
+        setTranscript("");
+      } catch (error) {
+        console.error("Error starting speech recognition:", error);
+        toast({
+          title: "Speech Recognition Error",
+          description: "Failed to start speech recognition. Please try again.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  // Function to speak text
+  const speakText = (text: string, messageId: string) => {
+    if (typeof window === 'undefined' || !window.speechSynthesis || !speechSynthesisRef.current) {
+      toast({
+        title: "Text-to-Speech Not Supported",
+        description: "Your browser doesn't support text-to-speech. Please use a modern browser.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      // Cancel any ongoing speech
+      window.speechSynthesis.cancel();
+      
+      // Set the text to speak
+      speechSynthesisRef.current.text = text;
+      
+      // Try to select a female voice
+      const voices = window.speechSynthesis.getVoices();
+      
+      // If voices are available immediately
+      if (voices.length > 0) {
+        // Find a female English voice
+        const femaleVoice = voices.find(
+          voice => 
+            (voice.name.includes('female') || 
+             voice.name.includes('Female') || 
+             voice.name.includes('Samantha') || 
+             voice.name.includes('Google US English Female') ||
+             voice.name.includes('Microsoft Zira') ||
+             voice.name.includes('Microsoft Jenny')) && 
+            voice.lang.includes('en')
+        );
+        
+        if (femaleVoice) {
+          speechSynthesisRef.current.voice = femaleVoice;
+        } else {
+          // Fallback to any English voice
+          const englishVoice = voices.find(voice => voice.lang.includes('en'));
+          if (englishVoice) {
+            speechSynthesisRef.current.voice = englishVoice;
+          }
+        }
+      } else {
+        // If voices aren't loaded yet, wait for them
+        window.speechSynthesis.onvoiceschanged = () => {
+          const voices = window.speechSynthesis.getVoices();
+          
+          // Find a female English voice
+          const femaleVoice = voices.find(
+            voice => 
+              (voice.name.includes('female') || 
+               voice.name.includes('Female') || 
+               voice.name.includes('Samantha') || 
+               voice.name.includes('Google US English Female') ||
+               voice.name.includes('Microsoft Zira') ||
+               voice.name.includes('Microsoft Jenny')) && 
+              voice.lang.includes('en')
+          );
+          
+          if (femaleVoice) {
+            speechSynthesisRef.current.voice = femaleVoice;
+          } else {
+            // Fallback to any English voice
+            const englishVoice = voices.find(voice => voice.lang.includes('en'));
+            if (englishVoice) {
+              speechSynthesisRef.current.voice = englishVoice;
+            }
+          }
+          
+          // Speak the text after setting the voice
+          window.speechSynthesis.speak(speechSynthesisRef.current);
+          setIsSpeaking(true);
+          setSpeakingMessageId(messageId);
+        };
+        
+        // Trigger voices to load
+        window.speechSynthesis.getVoices();
+        return;
+      }
+      
+      // Speak the text
+      window.speechSynthesis.speak(speechSynthesisRef.current);
+      setIsSpeaking(true);
+      setSpeakingMessageId(messageId);
+    } catch (error) {
+      console.error("Error starting speech synthesis:", error);
+      toast({
+        title: "Speech Synthesis Error",
+        description: "Failed to read the message. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  // Function to stop speaking
+  const stopSpeaking = () => {
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      setSpeakingMessageId(null);
+    }
+  };
+  
+  // Toggle auto-speak
+  const toggleAutoSpeak = () => {
+    setAutoSpeak(!autoSpeak);
+    
+    // If turning off auto-speak, stop any ongoing speech
+    if (autoSpeak && isSpeaking) {
+      stopSpeaking();
+    }
+  };
+
   return (
     <PageLayout>
       <div className="container py-8">
@@ -484,17 +828,46 @@ const Chat = () => {
             {/* Top Bar with Profile Button */}
             <div className="flex justify-between items-center mb-4">
               <h1 className="text-2xl font-bold">AI Counselor Chat</h1>
-              <Button 
-                variant="outline" 
-                className="flex items-center gap-2"
-                onClick={() => {
-                  setShowProfileDialog(true);
-                  setIsEditing(false);
-                }}
-              >
-                <User className="h-4 w-4" />
-                <span>Student Profile</span>
-              </Button>
+              <div className="flex gap-2">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        size="icon"
+                        onClick={() => {
+                          if (isSpeaking) {
+                            stopSpeaking();
+                            setAutoSpeak(false);
+                          } else {
+                            setAutoSpeak(true);
+                            // Don't automatically speak the last message
+                            // Just enable auto-speak for future responses
+                          }
+                        }}
+                        className={isSpeaking ? "bg-primary/10" : ""}
+                      >
+                        {isSpeaking ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{isSpeaking ? "Stop speaking" : "Enable speech"}</p>
+                      <p className="text-xs text-muted-foreground mt-1">AI responses will be read aloud</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <Button 
+                  variant="outline" 
+                  className="flex items-center gap-2"
+                  onClick={() => {
+                    setShowProfileDialog(true);
+                    setIsEditing(true);
+                  }}
+                >
+                  <User className="h-4 w-4" />
+                  <span>Edit Profile</span>
+                </Button>
+              </div>
             </div>
             
             {/* Chat Area - Full Width */}
@@ -528,12 +901,44 @@ const Chat = () => {
                 </ScrollArea>
 
                 <form onSubmit={handleSubmit} className="mt-4 flex gap-2">
-                  <Input
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    placeholder="Type your message..."
-                    disabled={loading}
-                  />
+                  <div className="relative flex-1">
+                    <Input
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      placeholder="Type your message..."
+                      disabled={loading}
+                    />
+                    {isRecording && (
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                        <div className="flex gap-1">
+                          <div className="w-1 h-3 bg-red-500 rounded-full animate-pulse"></div>
+                          <div className="w-1 h-3 bg-red-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                          <div className="w-1 h-3 bg-red-500 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                        </div>
+                        <span className="text-xs text-muted-foreground">{transcript || "Listening..."}</span>
+                      </div>
+                    )}
+                  </div>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          size="icon"
+                          onClick={toggleRecording}
+                          className={isRecording ? "bg-red-100 hover:bg-red-200" : ""}
+                          disabled={loading}
+                        >
+                          {isRecording ? <MicOff className="h-4 w-4 text-red-500" /> : <Mic className="h-4 w-4" />}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{isRecording ? "Stop recording" : "Start voice input"}</p>
+                        <p className="text-xs text-muted-foreground mt-1">Press Alt+M to toggle</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                   <Button type="submit" disabled={loading || !input.trim()}>
                     <Send className="h-4 w-4" />
                   </Button>
@@ -547,220 +952,11 @@ const Chat = () => {
       {/* Student Profile Dialog */}
       <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>
         <DialogContent className="max-w-4xl h-[90vh] overflow-y-auto">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold">Student Profile</h2>
-            <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => {
-                  setIsEditing(!isEditing);
-                }}
-                className="flex items-center gap-1 mr-[50px]"
-              >
-                {isEditing ? <Eye className="h-3 w-3" /> : <Pencil className="h-3 w-3" />}
-                <span>{isEditing ? "View" : "Edit"}</span>
-              </Button>
-            </div>
-          </div>
-          
-          {isEditing ? (
-            <StudentOnboardingForm 
-              onComplete={handleProfileUpdate}
-              initialData={student}
-              isEditing={true}
-            />
-          ) : (
-            <ScrollArea className="h-[calc(90vh-8rem)]">
-              <div className="space-y-6">
-                {/* Profile Header */}
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-12 w-12">
-                    <AvatarImage src="" alt={student?.name || "Student"} />
-                    <AvatarFallback>{getInitials(student?.name || "Student")}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <h3 className="font-medium">{student?.name || "Student"}</h3>
-                    <p className="text-sm text-muted-foreground">{student?.email || "No email provided"}</p>
-                  </div>
-                </div>
-                
-                <Separator />
-
-                {/* Academic Background */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <GraduationCap className="h-4 w-4 text-muted-foreground" />
-                    <h4 className="font-medium">Academic Background</h4>
-                  </div>
-                  <div className="space-y-2 pl-6">
-                    {student?.academic_background ? (
-                      <>
-                        <div>
-                          <p className="text-sm font-medium">Education</p>
-                          <p className="text-sm text-muted-foreground">
-                            {student.academic_background.current_education || "Not specified"}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">Subjects</p>
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {student.academic_background.subjects && student.academic_background.subjects.length > 0 ? (
-                              student.academic_background.subjects.map((subject, index) => (
-                                <Badge key={index} variant="outline" className="text-xs">
-                                  {subject}
-                                </Badge>
-                              ))
-                            ) : (
-                              <p className="text-sm text-muted-foreground">Not specified</p>
-                            )}
-                          </div>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">Grades</p>
-                          <p className="text-sm text-muted-foreground">
-                            {student.academic_background.grades || "Not specified"}
-                          </p>
-                        </div>
-                        {student.academic_background.institution && (
-                          <div>
-                            <p className="text-sm font-medium">Institution</p>
-                            <p className="text-sm text-muted-foreground">
-                              {student.academic_background.institution}
-                            </p>
-                          </div>
-                        )}
-                        {student.academic_background.year_of_completion && (
-                          <div>
-                            <p className="text-sm font-medium">Year of Completion</p>
-                            <p className="text-sm text-muted-foreground">
-                              {student.academic_background.year_of_completion}
-                            </p>
-                          </div>
-                        )}
-                        {student.academic_background.achievements && student.academic_background.achievements.length > 0 && (
-                          <div>
-                            <p className="text-sm font-medium">Achievements</p>
-                            <ul className="text-sm text-muted-foreground list-disc pl-2 mt-1">
-                              {student.academic_background.achievements.map((achievement, index) => (
-                                <li key={index}>{achievement}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">No academic information available</p>
-                    )}
-                  </div>
-                </div>
-                
-                <Separator />
-
-                {/* Preferences */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <BookOpen className="h-4 w-4 text-muted-foreground" />
-                    <h4 className="font-medium">Preferences</h4>
-                  </div>
-                  <div className="space-y-2 pl-6">
-                    <div>
-                      <p className="text-sm font-medium">Field of Study</p>
-                      <p className="text-sm text-muted-foreground">
-                        {student?.field_of_study || "Not specified"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">Preferred Locations</p>
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {student?.preferred_location && Array.isArray(student.preferred_location) && student.preferred_location.length > 0 ? (
-                          student.preferred_location.map((location, index) => (
-                            <Badge key={index} variant="outline" className="text-xs">
-                              {location}
-                            </Badge>
-                          ))
-                        ) : (
-                          <p className="text-sm text-muted-foreground">Not specified</p>
-                        )}
-                      </div>
-                    </div>
-                    {student?.additional_preferences && (
-                      <>
-                        {student.additional_preferences.study_mode && (
-                          <div>
-                            <p className="text-sm font-medium">Study Mode</p>
-                            <p className="text-sm text-muted-foreground">
-                              {student.additional_preferences.study_mode}
-                            </p>
-                          </div>
-                        )}
-                        {student.additional_preferences.budget_range && (
-                          <div>
-                            <p className="text-sm font-medium">Budget Range</p>
-                            <p className="text-sm text-muted-foreground">
-                              {student.additional_preferences.budget_range}
-                            </p>
-                          </div>
-                        )}
-                        {student.additional_preferences.duration_preference && (
-                          <div>
-                            <p className="text-sm font-medium">Duration</p>
-                            <p className="text-sm text-muted-foreground">
-                              {student.additional_preferences.duration_preference}
-                            </p>
-                          </div>
-                        )}
-                        {student.additional_preferences.start_date_preference && (
-                          <div>
-                            <p className="text-sm font-medium">Start Date</p>
-                            <p className="text-sm text-muted-foreground">
-                              {formatDate(student.additional_preferences.start_date_preference)}
-                            </p>
-                          </div>
-                        )}
-                        {student.additional_preferences.career_goals && student.additional_preferences.career_goals.length > 0 && (
-                          <div>
-                            <p className="text-sm font-medium">Career Goals</p>
-                            <ul className="text-sm text-muted-foreground list-disc pl-2 mt-1">
-                              {student.additional_preferences.career_goals.map((goal, index) => (
-                                <li key={index}>{goal}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </div>
-                
-                {/* Exam Scores */}
-                {student?.exam_scores && student.exam_scores.length > 0 && (
-                  <>
-                    <Separator />
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2">
-                        <Award className="h-4 w-4 text-muted-foreground" />
-                        <h4 className="font-medium">Exam Scores</h4>
-                      </div>
-                      <div className="space-y-2 pl-6">
-                        {student.exam_scores.map((exam, index) => (
-                          <div key={index} className="border rounded-md p-2">
-                            <p className="text-sm font-medium">{exam.exam_name}</p>
-                            <p className="text-sm text-muted-foreground">Score: {exam.score}</p>
-                            {exam.date_taken && (
-                              <p className="text-xs text-muted-foreground">
-                                Taken: {formatDate(exam.date_taken)}
-                              </p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-            </ScrollArea>
-          )}
+          <StudentOnboardingForm 
+            onComplete={handleProfileUpdate}
+            initialData={student}
+            isEditing={true}
+          />
         </DialogContent>
       </Dialog>
     </PageLayout>

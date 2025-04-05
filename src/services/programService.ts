@@ -29,6 +29,7 @@ export interface Program {
   curriculum: Curriculum;
   mode_of_delivery: string;
   application_details: string;
+  location: string;
   additional_notes: string;
 }
 

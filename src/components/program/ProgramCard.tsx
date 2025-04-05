@@ -27,6 +27,11 @@ const ProgramCard = ({ program }: ProgramCardProps) => {
           <p className="text-sm">{program.program_overview}</p>
           
           <div className="flex items-center text-sm text-muted-foreground">
+            <MapPin className="mr-2 h-4 w-4" />
+            {program.location}
+          </div>
+          
+          <div className="flex items-center text-sm text-muted-foreground">
             <Clock className="mr-2 h-4 w-4" />
             {program.duration}
           </div>

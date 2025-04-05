@@ -9,6 +9,8 @@ import NotFound from "./pages/NotFound";
 import AdminLogin from "./pages/AdminLogin";
 import ProtectedAdminRoute from "./components/ProtectedAdminRoute";
 import Programs from "./pages/Programs";
+import ProgramForm from "@/pages/ProgramForm";
+import AdminDashboard from "./pages/AdminDashboard";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +28,14 @@ const App = () => (
           {/* Admin routes */}
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route
+            path="/admin/dashboard"
+            element={
+              <ProtectedAdminRoute>
+                <AdminDashboard />
+              </ProtectedAdminRoute>
+            }
+          />
+          <Route
             path="/admin/programs"
             element={
               <ProtectedAdminRoute>
@@ -33,6 +43,8 @@ const App = () => (
               </ProtectedAdminRoute>
             }
           />
+          <Route path="/admin/programs/new" element={<ProtectedAdminRoute><ProgramForm /></ProtectedAdminRoute>} />
+          <Route path="/admin/programs/:id/edit" element={<ProtectedAdminRoute><ProgramForm /></ProtectedAdminRoute>} />
           
           {/* Catch-all route */}
           <Route path="*" element={<NotFound />} />

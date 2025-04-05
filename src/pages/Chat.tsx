@@ -8,6 +8,7 @@ import { useToast } from "@/components/ui/use-toast";
 import PageLayout from "@/components/layout/PageLayout";
 import { api } from "@/services/auth";
 import StudentOnboardingForm from "@/components/StudentOnboardingForm";
+import { Label } from "@/components/ui/label";
 
 interface Message {
   id: string;
@@ -65,6 +66,10 @@ const Chat = () => {
   const [student, setStudent] = useState<Student | null>(null);
   const [initializing, setInitializing] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showEmailConfirmation, setShowEmailConfirmation] = useState(false);
+  const [emailConfirmation, setEmailConfirmation] = useState("");
+  const [emailConfirmationError, setEmailConfirmationError] = useState("");
+  const [storedStudentData, setStoredStudentData] = useState<{id: string, email: string} | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -99,54 +104,33 @@ const Chat = () => {
           // Check if the response contains valid student data
           if (response.data && response.data.id) {
             console.log("Valid student data received:", response.data);
-            setStudent(response.data);
             
-            // Enhanced chat history loading - handle nested structure
-            if (response.data.conversation_history && 
-                response.data.conversation_history.messages && 
-                Array.isArray(response.data.conversation_history.messages)) {
-              
-              console.log("Loading existing conversation history:", response.data.conversation_history.messages.length, "messages");
-              console.log("Conversation history data:", response.data.conversation_history.messages);
-              
-              // Ensure all messages have proper timestamps and IDs
-              const formattedMessages = response.data.conversation_history.messages.map((msg, index) => ({
-                id: msg.id || `msg-${index}`,
-                role: msg.role,
-                content: msg.content,
-                timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date()
-              }));
-              
-              console.log("Formatted messages:", formattedMessages);
-              setMessages(formattedMessages);
-            } else {
-              // Add welcome message for existing students without conversation history
-              console.log("No existing conversation history found in response:", response.data);
-              setMessages([
-                {
-                  id: "welcome",
-                  role: "assistant",
-                  content: `Welcome back ${response.data.name || 'there'}! How can I help you today?`,
-                  timestamp: new Date(),
-                },
-              ]);
-            }
+            // Store the student data and show email confirmation
+            setStoredStudentData({
+              id: response.data.id,
+              email: response.data.email || ""
+            });
+            setShowEmailConfirmation(true);
+            setInitializing(false);
           } else {
             // If student data is invalid or missing, show onboarding form
             console.log("Student data is invalid or missing:", response.data);
             localStorage.removeItem("studentId"); // Clear invalid student ID
             setShowOnboarding(true);
+            setInitializing(false);
           }
         } catch (error) {
           // If API call fails, show onboarding form
           console.error("Error fetching student profile:", error);
           localStorage.removeItem("studentId"); // Clear invalid student ID
           setShowOnboarding(true);
+          setInitializing(false);
         }
       } else {
         // Show onboarding form for new students
         console.log("No stored student ID found, showing onboarding form");
         setShowOnboarding(true);
+        setInitializing(false);
       }
     } catch (error) {
       console.error("Error in initialization:", error);
@@ -157,9 +141,76 @@ const Chat = () => {
       });
       // Show onboarding form on initialization error
       setShowOnboarding(true);
-    } finally {
       setInitializing(false);
     }
+  };
+
+  const handleEmailConfirmation = () => {
+    if (!storedStudentData) return;
+    
+    // Check if the entered email matches the stored email
+    if (emailConfirmation.toLowerCase() === storedStudentData.email.toLowerCase()) {
+      // Email matches, proceed to load the student profile
+      loadStudentProfile(storedStudentData.id);
+    } else {
+      // Email doesn't match, show error
+      setEmailConfirmationError("Email doesn't match. Please try again or start a new chat.");
+    }
+  };
+
+  const loadStudentProfile = async (studentId: string) => {
+    try {
+      const response = await api.get(`/api/students/${studentId}`);
+      
+      if (response.data && response.data.id) {
+        setStudent(response.data);
+        setShowEmailConfirmation(false);
+        
+        // Enhanced chat history loading - handle nested structure
+        if (response.data.conversation_history && 
+            response.data.conversation_history.messages && 
+            Array.isArray(response.data.conversation_history.messages)) {
+          
+          console.log("Loading existing conversation history:", response.data.conversation_history.messages.length, "messages");
+          
+          // Ensure all messages have proper timestamps and IDs
+          const formattedMessages = response.data.conversation_history.messages.map((msg, index) => ({
+            id: msg.id || `msg-${index}`,
+            role: msg.role,
+            content: msg.content,
+            timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date()
+          }));
+          
+          setMessages(formattedMessages);
+        } else {
+          // Add welcome message for existing students without conversation history
+          setMessages([
+            {
+              id: "welcome",
+              role: "assistant",
+              content: `Welcome back ${response.data.name || 'there'}! How can I help you today?`,
+              timestamp: new Date(),
+            },
+          ]);
+        }
+      }
+    } catch (error) {
+      console.error("Error loading student profile:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load your profile. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const startNewChat = () => {
+    // Clear the stored student ID
+    localStorage.removeItem("studentId");
+    
+    // Show the onboarding form
+    setShowEmailConfirmation(false);
+    setShowOnboarding(true);
   };
 
   const handleOnboardingComplete = async (studentId: string) => {
@@ -167,6 +218,9 @@ const Chat = () => {
       const response = await api.get(`/api/students/${studentId}`);
       setStudent(response.data);
       setShowOnboarding(false);
+      
+      // Store the student ID in local storage
+      localStorage.setItem("studentId", studentId);
       
       // Add welcome message
       setMessages([
@@ -184,6 +238,34 @@ const Chat = () => {
         variant: "destructive",
       });
     }
+  };
+
+  // Function to mask email for display
+  const maskEmail = (email: string) => {
+    if (!email) return "";
+    
+    const [username, domain] = email.split('@');
+    if (!domain) return email;
+    
+    const [domainName, extension] = domain.split('.');
+    if (!extension) return email;
+    
+    // Mask username (keep first and last character)
+    const maskedUsername = username.length > 2 
+      ? username.charAt(0) + '*'.repeat(username.length - 2) + username.charAt(username.length - 1)
+      : username;
+    
+    // Mask domain (keep first and last character)
+    const maskedDomain = domainName.length > 2
+      ? domainName.charAt(0) + '*'.repeat(domainName.length - 2) + domainName.charAt(domainName.length - 1)
+      : domainName;
+    
+    // Mask extension (keep first and last character)
+    const maskedExtension = extension.length > 2
+      ? extension.charAt(0) + '*'.repeat(extension.length - 2) + extension.charAt(extension.length - 1)
+      : extension;
+    
+    return `${maskedUsername}@${maskedDomain}.${maskedExtension}`;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -293,6 +375,57 @@ const Chat = () => {
       <PageLayout>
         <div className="container py-8">
           <div className="text-center">Initializing chat...</div>
+        </div>
+      </PageLayout>
+    );
+  }
+
+  if (showEmailConfirmation && storedStudentData) {
+    return (
+      <PageLayout>
+        <div className="container py-8">
+          <Card>
+            <CardContent className="p-6">
+              <h2 className="text-2xl font-bold mb-4">Welcome Back!</h2>
+              <p className="mb-4">
+                We found a previous session for {maskEmail(storedStudentData.email)}.
+                Please confirm your email to continue your conversation.
+              </p>
+              
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="email">Email Address</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={emailConfirmation}
+                    onChange={(e) => setEmailConfirmation(e.target.value)}
+                    placeholder="Enter your full email address"
+                    className={emailConfirmationError ? "border-red-500" : ""}
+                  />
+                  {emailConfirmationError && (
+                    <p className="text-red-500 text-sm mt-1">{emailConfirmationError}</p>
+                  )}
+                </div>
+                
+                <div className="flex gap-4">
+                  <Button 
+                    onClick={handleEmailConfirmation}
+                    className="flex-1"
+                  >
+                    Continue Session
+                  </Button>
+                  <Button 
+                    onClick={startNewChat}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    Start New Chat
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </PageLayout>
     );

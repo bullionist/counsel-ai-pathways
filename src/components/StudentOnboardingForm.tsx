@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { api } from "@/services/auth";
 import { useToast } from "@/components/ui/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { X } from "lucide-react";
 
 interface StudentOnboardingFormProps {
   onComplete: (studentId: string) => void;
@@ -19,6 +21,14 @@ interface ExamScore {
   validity_period: number;
 }
 
+// List of countries for location selection
+const countries = [
+  "United States", "Canada", "United Kingdom", "Australia", "Germany", 
+  "France", "Japan", "Singapore", "India", "China", "Brazil", "Mexico", 
+  "South Korea", "Netherlands", "Sweden", "Switzerland", "Italy", 
+  "Spain", "New Zealand", "Ireland"
+];
+
 const StudentOnboardingForm = ({ onComplete }: StudentOnboardingFormProps) => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -28,7 +38,8 @@ const StudentOnboardingForm = ({ onComplete }: StudentOnboardingFormProps) => {
   const [institution, setInstitution] = useState("");
   const [yearOfCompletion, setYearOfCompletion] = useState("");
   const [achievements, setAchievements] = useState("");
-  const [preferredLocation, setPreferredLocation] = useState("");
+  const [preferredLocations, setPreferredLocations] = useState<string[]>([]);
+  const [selectedLocation, setSelectedLocation] = useState("");
   const [fieldOfStudy, setFieldOfStudy] = useState("");
   const [examScores, setExamScores] = useState<ExamScore[]>([]);
   const [examName, setExamName] = useState("");
@@ -47,44 +58,64 @@ const StudentOnboardingForm = ({ onComplete }: StudentOnboardingFormProps) => {
   const populateSampleData = () => {
     setName("John Doe");
     setEmail("john.doe@example.com");
-    setCurrentEducation("Bachelor's Degree");
-    setSubjects("Computer Science, Mathematics, Physics");
-    setGrades("3.8 GPA");
-    setInstitution("University of Example");
+    setCurrentEducation("High School");
+    setSubjects("Mathematics, Physics, Chemistry");
+    setGrades("A");
+    setInstitution("Central High School");
     setYearOfCompletion("2023");
-    setAchievements("Dean's List, Best Project Award, Hackathon Winner");
-    setPreferredLocation("New York");
+    setAchievements("Science Olympiad Winner, Math Competition Finalist");
+    setPreferredLocations(["United States", "Canada", "United Kingdom"]);
     setFieldOfStudy("Computer Science");
     
     // Add sample exam scores with proper ISO format
-    const greDate = new Date(2024, 1, 29); // February 29, 2024
-    greDate.setUTCHours(16, 0, 0, 0);
+    const satDate = new Date(2023, 4, 15); // May 15, 2023
+    satDate.setUTCHours(12, 0, 0, 0);
+    
+    const apDate = new Date(2023, 5, 10); // June 10, 2023
+    apDate.setUTCHours(12, 0, 0, 0);
     
     setExamScores([
       {
-        exam_name: "GRE",
-        score: "320",
-        date_taken: greDate.toISOString(),
+        exam_name: "SAT",
+        score: "1450",
+        date_taken: satDate.toISOString(),
+        validity_period: 24
+      },
+      {
+        exam_name: "AP Computer Science",
+        score: "5",
+        date_taken: apDate.toISOString(),
         validity_period: 24
       }
     ]);
     
-    setStudyMode("full-time");
+    setStudyMode("hybrid");
     setBudgetRange("30000-50000");
-    setDurationPreference("long-term");
+    setDurationPreference("4-year");
     
     // Set start date in ISO format
-    const startDateObj = new Date(2024, 7, 31); // August 31, 2024
-    startDateObj.setUTCHours(0, 0, 0, 0);
+    const startDateObj = new Date(2024, 8, 1); // September 1, 2024
+    startDateObj.setUTCHours(12, 0, 0, 0);
     setStartDate(startDateObj.toISOString().split('T')[0]); // Still use YYYY-MM-DD for the input field
     
-    setSpecialRequirements("Evening classes, Online options");
+    setSpecialRequirements("Scholarship opportunities, Internship programs");
     setCareerGoals("Software Development, AI Research");
     
     toast({
       title: "Sample Data Loaded",
       description: "All form fields have been populated with sample data for testing.",
     });
+  };
+
+  const handleAddLocation = () => {
+    if (selectedLocation && !preferredLocations.includes(selectedLocation)) {
+      setPreferredLocations([...preferredLocations, selectedLocation]);
+      setSelectedLocation("");
+    }
+  };
+
+  const handleRemoveLocation = (location: string) => {
+    setPreferredLocations(preferredLocations.filter(loc => loc !== location));
   };
 
   const handleAddExam = () => {
@@ -111,7 +142,7 @@ const StudentOnboardingForm = ({ onComplete }: StudentOnboardingFormProps) => {
     e.preventDefault();
     
     // Validate required fields
-    if (!name || !currentEducation || !subjects || !grades || !preferredLocation || !fieldOfStudy) {
+    if (!name || !currentEducation || !subjects || !grades || preferredLocations.length === 0 || !fieldOfStudy) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
@@ -144,7 +175,7 @@ const StudentOnboardingForm = ({ onComplete }: StudentOnboardingFormProps) => {
           year_of_completion: yearOfCompletion ? parseInt(yearOfCompletion) : undefined,
           achievements: achievements ? achievements.split(",").map(a => a.trim()).filter(a => a) : undefined
         },
-        preferred_location: preferredLocation,
+        preferred_location: preferredLocations,
         field_of_study: fieldOfStudy,
         exam_scores: examScores.length > 0 ? examScores.map(score => ({
           exam_name: score.exam_name,
@@ -257,7 +288,7 @@ const StudentOnboardingForm = ({ onComplete }: StudentOnboardingFormProps) => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
+                <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
                   type="email"
@@ -278,26 +309,17 @@ const StudentOnboardingForm = ({ onComplete }: StudentOnboardingFormProps) => {
                   id="currentEducation"
                   value={currentEducation}
                   onChange={(e) => setCurrentEducation(e.target.value)}
-                  placeholder="e.g., Bachelor's Degree"
+                  placeholder="e.g., High School, Bachelor's Degree"
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="institution">Institution</Label>
-                <Input
-                  id="institution"
-                  value={institution}
-                  onChange={(e) => setInstitution(e.target.value)}
-                  placeholder="Name of your institution"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="subjects">Subjects (comma-separated) *</Label>
+                <Label htmlFor="subjects">Subjects *</Label>
                 <Input
                   id="subjects"
                   value={subjects}
                   onChange={(e) => setSubjects(e.target.value)}
-                  placeholder="e.g., Computer Science, Mathematics"
+                  placeholder="e.g., Mathematics, Physics, Chemistry"
                   required
                 />
               </div>
@@ -307,27 +329,35 @@ const StudentOnboardingForm = ({ onComplete }: StudentOnboardingFormProps) => {
                   id="grades"
                   value={grades}
                   onChange={(e) => setGrades(e.target.value)}
-                  placeholder="Your grades or GPA"
+                  placeholder="e.g., 3.8 GPA, 90%"
                   required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="institution">Institution</Label>
+                <Input
+                  id="institution"
+                  value={institution}
+                  onChange={(e) => setInstitution(e.target.value)}
+                  placeholder="e.g., University of Example"
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="yearOfCompletion">Year of Completion</Label>
                 <Input
                   id="yearOfCompletion"
-                  type="number"
                   value={yearOfCompletion}
                   onChange={(e) => setYearOfCompletion(e.target.value)}
-                  placeholder="Expected completion year"
+                  placeholder="e.g., 2023"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="achievements">Achievements (comma-separated)</Label>
+                <Label htmlFor="achievements">Achievements</Label>
                 <Input
                   id="achievements"
                   value={achievements}
                   onChange={(e) => setAchievements(e.target.value)}
-                  placeholder="List your achievements"
+                  placeholder="e.g., Dean's List, Best Project Award"
                 />
               </div>
             </div>
@@ -395,22 +425,57 @@ const StudentOnboardingForm = ({ onComplete }: StudentOnboardingFormProps) => {
             <h3 className="text-lg font-medium">Preferences</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
+                <Label htmlFor="preferredLocation">Preferred Locations *</Label>
+                <div className="flex gap-2">
+                  <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Select a country" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {countries.map((country) => (
+                        <SelectItem key={country} value={country}>
+                          {country}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={handleAddLocation}
+                    disabled={!selectedLocation}
+                  >
+                    Add
+                  </Button>
+                </div>
+                {preferredLocations.length === 0 && (
+                  <p className="text-sm text-red-500">Please select at least one location</p>
+                )}
+                {preferredLocations.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {preferredLocations.map((location) => (
+                      <Badge key={location} variant="secondary" className="flex items-center gap-1">
+                        {location}
+                        <button 
+                          type="button" 
+                          onClick={() => handleRemoveLocation(location)}
+                          className="text-muted-foreground hover:text-foreground"
+                        >
+                          <X size={14} />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="fieldOfStudy">Field of Study *</Label>
                 <Input
                   id="fieldOfStudy"
                   value={fieldOfStudy}
                   onChange={(e) => setFieldOfStudy(e.target.value)}
-                  placeholder="Your desired field of study"
+                  placeholder="e.g., Computer Science, Business"
                   required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="preferredLocation">Preferred Location</Label>
-                <Input
-                  id="preferredLocation"
-                  value={preferredLocation}
-                  onChange={(e) => setPreferredLocation(e.target.value)}
-                  placeholder="Where would you like to study?"
                 />
               </div>
               <div className="space-y-2">

@@ -297,6 +297,7 @@ const Chat = () => {
         title: "Error",
         description: "Failed to initialize chat. Please try again.",
         variant: "destructive",
+        duration: 3000,
       });
       // Show onboarding form on initialization error
       setShowOnboarding(true);
@@ -361,6 +362,7 @@ const Chat = () => {
         title: "Error",
         description: "Failed to load your profile. Please try again.",
         variant: "destructive",
+        duration: 3000,
       });
     }
   };
@@ -397,6 +399,7 @@ const Chat = () => {
         title: "Error",
         description: "Failed to load student profile. Please try again.",
         variant: "destructive",
+        duration: 3000,
       });
     }
   };
@@ -409,12 +412,14 @@ const Chat = () => {
       toast({
         title: "Success",
         description: "Profile updated successfully!",
+        duration: 3000,
       });
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.response?.data?.message || "Failed to update profile. Please try again.",
         variant: "destructive",
+        duration: 3000,
       });
     }
   };
@@ -527,6 +532,7 @@ const Chat = () => {
           toast({
             title: "Profile Updated",
             description: "Your profile information has been updated based on our conversation.",
+            duration: 3000,
           });
         }
       } else {
@@ -540,6 +546,7 @@ const Chat = () => {
           title: "Error",
           description: result.error || result.message || "Failed to process your message.",
           variant: "destructive",
+          duration: 3000,
         });
       }
     } catch (error: any) {
@@ -562,6 +569,7 @@ const Chat = () => {
         title: "Error",
         description: "Failed to send message. Please try again.",
         variant: "destructive",
+        duration: 3000,
       });
     } finally {
       setLoading(false);
@@ -597,6 +605,7 @@ const Chat = () => {
         title: "Speech Recognition Not Supported",
         description: "Your browser doesn't support speech recognition. Please use a modern browser like Chrome.",
         variant: "destructive",
+        duration: 3000,
       });
       return;
     }
@@ -645,6 +654,7 @@ const Chat = () => {
               title: "Speech Recognition Error",
               description: `Error: ${event.error}. Please try again.`,
               variant: "destructive",
+              duration: 3000,
             });
           }
         };
@@ -672,6 +682,7 @@ const Chat = () => {
           title: "Speech Recognition Error",
           description: "Failed to start speech recognition. Please try again.",
           variant: "destructive",
+          duration: 3000,
         });
       }
     }
@@ -684,6 +695,7 @@ const Chat = () => {
         title: "Text-to-Speech Not Supported",
         description: "Your browser doesn't support text-to-speech. Please use a modern browser.",
         variant: "destructive",
+        duration: 3000,
       });
       return;
     }
@@ -769,6 +781,7 @@ const Chat = () => {
         title: "Speech Synthesis Error",
         description: "Failed to read the message. Please try again.",
         variant: "destructive",
+        duration: 3000,
       });
     }
   };
@@ -800,28 +813,79 @@ const Chat = () => {
         ) : showOnboarding ? (
           <StudentOnboardingForm onComplete={handleOnboardingComplete} />
         ) : showEmailConfirmation ? (
-          <div className="container py-8">
-            <Card>
-              <CardContent className="p-6">
-                <h2 className="text-2xl font-bold mb-4">Welcome Back!</h2>
-                <p className="mb-4">
-                  We found a previous session for {maskEmail(storedStudentData?.email)}.
-                  Please confirm your email to continue your conversation.
+          <div className="min-h-[80vh] flex items-center justify-center">
+            <div className="w-full max-w-2xl">
+              <div className="text-center mb-8">
+                <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
+                  Welcome Back to CounselAI
+                </h1>
+                <p className="text-xl text-muted-foreground">
+                  Your personal AI counselor is ready to assist you
                 </p>
-                <form onSubmit={handleEmailConfirmation} className="space-y-4">
-                  <Input
-                    type="email"
-                    value={emailConfirmation}
-                    onChange={(e) => setEmailConfirmation(e.target.value)}
-                    placeholder="Enter your email"
-                    required
-                  />
-                  <Button type="submit" disabled={loading}>
-                    {loading ? "Confirming..." : "Confirm Email"}
+              </div>
+              
+              <Card className="shadow-lg">
+                <CardHeader>
+                  <CardTitle className="text-2xl text-center">Continue Your Journey</CardTitle>
+                  <CardDescription className="text-center">
+                    We found your previous session. Please confirm your email to continue.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-center mb-6">
+                    <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Mail className="w-8 h-8 text-primary" />
+                    </div>
+                  </div>
+                  
+                  <p className="text-center mb-6 text-muted-foreground">
+                    Previous session found for: <br />
+                    <span className="font-medium text-foreground">{maskEmail(storedStudentData?.email)}</span>
+                  </p>
+                  
+                  <form onSubmit={handleEmailConfirmation} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email Address</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={emailConfirmation}
+                        onChange={(e) => setEmailConfirmation(e.target.value)}
+                        placeholder="Enter your email"
+                        className="w-full"
+                        required
+                      />
+                      {emailConfirmationError && (
+                        <p className="text-sm text-red-500">{emailConfirmationError}</p>
+                      )}
+                    </div>
+                    <Button type="submit" className="w-full" size="lg" disabled={loading}>
+                      {loading ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <span>Confirming...</span>
+                        </div>
+                      ) : (
+                        "Continue Chat"
+                      )}
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+              
+              <div className="mt-4 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Not your account?{" "}
+                  <Button 
+                    variant="link" 
+                    className="text-primary font-medium p-0 h-auto"
+                    onClick={startNewChat}
+                  >
+                    Start a new chat
                   </Button>
-                </form>
-              </CardContent>
-            </Card>
+                </p>
+              </div>
+            </div>
           </div>
         ) : (
           <div className="flex flex-col h-[calc(100vh-8rem)]">

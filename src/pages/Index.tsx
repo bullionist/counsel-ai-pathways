@@ -1,107 +1,147 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { BookOpen, MessageSquare, School, Award, ChevronRight, BarChart } from "lucide-react";
+import { BookOpen, MessageSquare, School, Award, ChevronRight, BarChart, Sparkles, Brain, Target, ArrowRight } from "lucide-react";
 import PageLayout from "@/components/layout/PageLayout";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 
 const Index = () => {
   return (
     <PageLayout>
       {/* Hero Section */}
-      <section className="bg-gradient-to-b from-counsel-50 to-background py-20">
-        <div className="container flex flex-col items-center text-center">
-          <h1 className="text-4xl md:text-5xl font-bold leading-tight max-w-3xl mb-6">
-            AI-Powered Guidance for Your Academic Journey
-          </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mb-8">
-            Get personalized program recommendations and academic counseling tailored to your unique background and goals.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4">
-            <Button size="lg" asChild>
-              <Link to="/chat">
-                Chat with AI Counselor
-                <MessageSquare className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
-          
-          <div className="mt-16 rounded-xl overflow-hidden shadow-xl">
-            <img 
-              src="https://images.unsplash.com/photo-1516979187457-637abb4f9353?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1050&q=80" 
-              alt="Student using a laptop" 
-              className="w-full h-auto object-cover max-w-3xl" 
-            />
+      <section className="relative overflow-hidden bg-gradient-to-b from-counsel-50/50 to-background py-32">
+        <div className="absolute inset-0 bg-grid-black/[0.02] bg-[size:20px_20px]" />
+        <div className="container relative">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div className="text-left space-y-8">
+              <div className="space-y-4">
+                <Badge variant="secondary" className="px-4 py-2 text-base">
+                  <Sparkles className="h-4 w-4 mr-2 inline-block" />
+                  AI-Powered Academic Guidance
+                </Badge>
+                <h1 className="text-5xl md:text-6xl font-bold leading-tight bg-gradient-to-r from-counsel-600 to-purple-600 bg-clip-text text-transparent">
+                  Your Personal AI Academic Counselor
+                </h1>
+                <p className="text-xl text-muted-foreground">
+                  Get instant, personalized guidance for your academic journey. Explore programs, receive recommendations, and make informed decisions about your future.
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Button size="lg" className="text-lg px-8" asChild>
+                  <Link to="/chat">
+                    Start Your Journey
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Link>
+                </Button>
+              </div>
+              <div className="flex items-center gap-8 pt-4">
+                <div>
+                  <h4 className="text-2xl font-bold">10k+</h4>
+                  <p className="text-muted-foreground">Students Guided</p>
+                </div>
+                <div className="w-px h-12 bg-border" />
+                <div>
+                  <h4 className="text-2xl font-bold">98%</h4>
+                  <p className="text-muted-foreground">Success Rate</p>
+                </div>
+                <div className="w-px h-12 bg-border" />
+                <div>
+                  <h4 className="text-2xl font-bold">24/7</h4>
+                  <p className="text-muted-foreground">AI Support</p>
+                </div>
+              </div>
+            </div>
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-r from-counsel-600/20 to-purple-600/20 rounded-3xl blur-3xl" />
+              <img 
+                src="https://images.unsplash.com/photo-1541339907198-e08756dedf3f?ixlib=rb-4.0.3&q=85&fm=jpg&crop=entropy&cs=srgb&w=2000" 
+                alt="Students celebrating graduation by throwing caps in the air" 
+                className="relative rounded-3xl shadow-2xl border border-border/50 object-cover h-[600px] w-full"
+                style={{ objectPosition: "center 30%" }}
+              />
+            </div>
           </div>
         </div>
       </section>
       
       {/* Features Section */}
-      <section className="py-16 bg-white">
-        <div className="container">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">How CounselAI Works</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Our AI-powered platform analyzes your academic background, interests, and career goals to provide personalized guidance every step of the way.
+      <section className="py-24 bg-white relative overflow-hidden">
+        <div className="absolute inset-0 bg-grid-black/[0.02] bg-[size:20px_20px]" />
+        <div className="container relative">
+          <div className="text-center space-y-4 mb-16">
+            <Badge variant="secondary" className="px-4 py-2 text-base">
+              <Brain className="h-4 w-4 mr-2 inline-block" />
+              Smart Features
+            </Badge>
+            <h2 className="text-4xl font-bold">How CounselAI Helps You Succeed</h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Our AI-powered platform provides comprehensive support throughout your academic journey
             </p>
           </div>
           
           <div className="grid md:grid-cols-3 gap-8">
             <FeatureCard 
               icon={<MessageSquare className="h-10 w-10 text-counsel-600" />}
-              title="Chat with AI Counselor"
-              description="Engage in natural conversations with our AI to explore educational options and receive guidance."
+              title="Smart Conversations"
+              description="Engage in natural, context-aware discussions about your academic goals and receive personalized guidance."
             />
             <FeatureCard 
-              icon={<Award className="h-10 w-10 text-counsel-600" />}
-              title="Get Recommendations"
-              description="Receive personalized program recommendations based on your profile and conversations."
+              icon={<Target className="h-10 w-10 text-counsel-600" />}
+              title="Tailored Recommendations"
+              description="Get program suggestions that perfectly match your academic background, interests, and career aspirations."
             />
             <FeatureCard 
               icon={<School className="h-10 w-10 text-counsel-600" />}
-              title="Explore Programs"
-              description="Discover academic programs that match your interests, qualifications, and career goals."
+              title="Comprehensive Analysis"
+              description="Receive detailed insights about programs, universities, and career paths based on your profile."
             />
           </div>
         </div>
       </section>
       
       {/* Programs Section */}
-      <section className="py-16 bg-gradient-to-b from-background to-counsel-50">
-        <div className="container">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">Explore Academic Programs</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Browse through thousands of programs across various disciplines and institutions to find your perfect fit.
+      <section className="py-24 bg-gradient-to-b from-background to-counsel-50/30 relative overflow-hidden">
+        <div className="absolute inset-0 bg-grid-black/[0.02] bg-[size:20px_20px]" />
+        <div className="container relative">
+          <div className="text-center space-y-4 mb-16">
+            <Badge variant="secondary" className="px-4 py-2 text-base">
+              <BookOpen className="h-4 w-4 mr-2 inline-block" />
+              Academic Programs
+            </Badge>
+            <h2 className="text-4xl font-bold">Discover Your Perfect Program</h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Explore thousands of programs across various disciplines and find the one that matches your aspirations
             </p>
           </div>
           
           <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-6">
             <ProgramCategoryCard 
               icon={<School className="h-8 w-8" />}
-              title="Undergraduate"
+              title="Undergraduate Programs"
               count={2500}
               color="bg-blue-50 text-blue-700"
             />
             <ProgramCategoryCard 
               icon={<BookOpen className="h-8 w-8" />}
-              title="Graduate"
+              title="Graduate Studies"
               count={1800}
               color="bg-purple-50 text-purple-700"
             />
             <ProgramCategoryCard 
               icon={<Award className="h-8 w-8" />}
-              title="Certificate"
+              title="Professional Certificates"
               count={950}
               color="bg-amber-50 text-amber-700"
             />
             <ProgramCategoryCard 
               icon={<BarChart className="h-8 w-8" />}
-              title="Business"
+              title="Business & Management"
               count={1200}
               color="bg-green-50 text-green-700"
             />
             <ProgramCategoryCard 
               icon={<span className="flex h-8 w-8 items-center justify-center rounded-full">🧬</span>}
-              title="Sciences"
+              title="Science & Technology"
               count={1350}
               color="bg-indigo-50 text-indigo-700"
             />
@@ -112,37 +152,33 @@ const Index = () => {
               color="bg-rose-50 text-rose-700"
             />
           </div>
-          
-          <div className="text-center mt-10">
-            <Button asChild>
-              <Link to="/chat">
-                Start Chatting with AI
-                <ChevronRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
         </div>
       </section>
       
       {/* Testimonials */}
-      <section className="py-16 bg-white">
-        <div className="container">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">Student Success Stories</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Hear from students who found their ideal academic path with CounselAI.
+      <section className="py-24 bg-white relative overflow-hidden">
+        <div className="absolute inset-0 bg-grid-black/[0.02] bg-[size:20px_20px]" />
+        <div className="container relative">
+          <div className="text-center space-y-4 mb-16">
+            <Badge variant="secondary" className="px-4 py-2 text-base">
+              <Award className="h-4 w-4 mr-2 inline-block" />
+              Success Stories
+            </Badge>
+            <h2 className="text-4xl font-bold">What Our Students Say</h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Real stories from students who found their path with CounselAI
             </p>
           </div>
           
           <div className="grid md:grid-cols-2 gap-8">
             <TestimonialCard 
-              quote="The AI counselor helped me narrow down my options and find a program that perfectly matched my interests in data science and healthcare."
+              quote="CounselAI's personalized recommendations helped me discover my passion for data science and find the perfect graduate program."
               name="Sarah Johnson"
               role="MS in Data Science Student"
               image="https://randomuser.me/api/portraits/women/45.jpg"
             />
             <TestimonialCard 
-              quote="I was overwhelmed by the graduate school application process until I found CounselAI. The personalized guidance made all the difference."
+              quote="The AI counselor provided invaluable guidance throughout my PhD application process, making it much less overwhelming."
               name="Michael Chen"
               role="PhD Candidate in Computer Science"
               image="https://randomuser.me/api/portraits/men/32.jpg"
@@ -152,17 +188,22 @@ const Index = () => {
       </section>
       
       {/* CTA Section */}
-      <section className="py-16 bg-counsel-600 text-white">
-        <div className="container text-center">
-          <h2 className="text-3xl font-bold mb-6">Ready to Find Your Academic Path?</h2>
-          <p className="text-counsel-100 max-w-2xl mx-auto mb-8">
-            Start chatting with our AI counselor today to discover educational opportunities tailored to your needs.
-          </p>
-          <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <Button size="lg" variant="secondary" asChild>
+      <section className="py-24 bg-counsel-600 relative overflow-hidden">
+        <div className="absolute inset-0 bg-grid-white/[0.02] bg-[size:20px_20px]" />
+        <div className="container relative text-center">
+          <div className="max-w-3xl mx-auto space-y-8">
+            <Badge variant="secondary" className="px-4 py-2 text-base">
+              <Sparkles className="h-4 w-4 mr-2 inline-block" />
+              Get Started Today
+            </Badge>
+            <h2 className="text-4xl font-bold text-white">Ready to Shape Your Academic Future?</h2>
+            <p className="text-xl text-counsel-100">
+              Join thousands of students who have found their perfect academic path with CounselAI's personalized guidance.
+            </p>
+            <Button size="lg" variant="secondary" className="text-lg px-8" asChild>
               <Link to="/chat">
-                Chat with AI Counselor
-                <MessageSquare className="ml-2 h-4 w-4" />
+                Start Free Consultation
+                <ArrowRight className="ml-2 h-5 w-5" />
               </Link>
             </Button>
           </div>
@@ -174,40 +215,42 @@ const Index = () => {
 
 // Helper components
 const FeatureCard = ({ icon, title, description }: { icon: React.ReactNode, title: string, description: string }) => (
-  <div className="flex flex-col items-center text-center p-6 rounded-lg border bg-white shadow-sm">
-    <div className="mb-4 p-3 rounded-full bg-counsel-50">{icon}</div>
-    <h3 className="text-xl font-semibold mb-2">{title}</h3>
-    <p className="text-muted-foreground">{description}</p>
-  </div>
+  <Card className="p-8 space-y-4 hover:shadow-lg transition-shadow">
+    <div className="p-3 rounded-2xl bg-counsel-50 w-fit">{icon}</div>
+    <h3 className="text-2xl font-semibold">{title}</h3>
+    <p className="text-muted-foreground leading-relaxed">{description}</p>
+  </Card>
 );
 
 const ProgramCategoryCard = ({ icon, title, count, color }: { icon: React.ReactNode, title: string, count: number, color: string }) => (
   <Link to="/chat" className="block">
-    <div className="flex items-center p-6 rounded-lg border bg-white shadow-sm hover:shadow-md transition-shadow">
-      <div className={`p-3 rounded-full mr-4 ${color}`}>{icon}</div>
-      <div>
-        <h3 className="font-semibold">{title}</h3>
-        <p className="text-sm text-muted-foreground">{count}+ programs</p>
+    <Card className="p-6 hover:shadow-lg transition-shadow">
+      <div className="flex items-center gap-4">
+        <div className={`p-3 rounded-2xl ${color}`}>{icon}</div>
+        <div className="space-y-1">
+          <h3 className="font-semibold text-lg">{title}</h3>
+          <p className="text-sm text-muted-foreground">{count}+ programs</p>
+        </div>
       </div>
-    </div>
+    </Card>
   </Link>
 );
 
 const TestimonialCard = ({ quote, name, role, image }: { quote: string, name: string, role: string, image: string }) => (
-  <div className="p-6 rounded-lg border bg-white shadow-sm">
-    <p className="text-lg italic mb-6">"{quote}"</p>
-    <div className="flex items-center">
+  <Card className="p-8 space-y-6">
+    <p className="text-lg leading-relaxed">"{quote}"</p>
+    <div className="flex items-center gap-4">
       <img 
         src={image} 
         alt={name} 
-        className="h-12 w-12 rounded-full mr-4 object-cover" 
+        className="w-12 h-12 rounded-full object-cover"
       />
       <div>
         <h4 className="font-semibold">{name}</h4>
         <p className="text-sm text-muted-foreground">{role}</p>
       </div>
     </div>
-  </div>
+  </Card>
 );
 
 export default Index;

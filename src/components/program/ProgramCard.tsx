@@ -1,69 +1,83 @@
-
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { GraduationCap, MapPin, Clock, BookOpen, ExternalLink } from "lucide-react";
+import { Bookmark, MapPin, Clock, GraduationCap, DollarSign, Info } from "lucide-react";
+import { Program } from "@/services/programService";
+import { Badge } from "@/components/ui/badge";
 
-interface ProgramProps {
-  id: string;
-  name: string;
-  institution: string;
-  location: string;
-  duration: string;
-  level: string;
-  description: string;
-  match?: number; // optional match percentage for recommendations
+interface ProgramCardProps {
+  program: Program;
 }
 
-const ProgramCard = ({
-  id,
-  name,
-  institution,
-  location,
-  duration,
-  level,
-  description,
-  match
-}: ProgramProps) => {
+const ProgramCard = ({ program }: ProgramCardProps) => {
   return (
-    <Card className="card-hover">
-      <CardHeader className="pb-2">
-        {match && (
-          <div className="flex justify-end">
-            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-              {match}% Match
-            </Badge>
+    <Card className="hover:shadow-lg transition-shadow">
+      <CardHeader>
+        <div className="flex justify-between items-start">
+          <div>
+            <h3 className="font-semibold text-lg">{program.program_title}</h3>
+            <p className="text-sm text-muted-foreground">{program.institution}</p>
           </div>
-        )}
-        <CardTitle className="text-xl">{name}</CardTitle>
-        <CardDescription className="flex items-center">
-          <GraduationCap className="h-4 w-4 mr-1" />
-          {institution}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-2 text-sm">
-          <div className="flex items-center text-muted-foreground">
-            <MapPin className="h-4 w-4 mr-1" />
-            {location}
-          </div>
-          <div className="flex items-center text-muted-foreground">
-            <Clock className="h-4 w-4 mr-1" />
-            {duration}
-          </div>
+          <Button variant="ghost" size="icon">
+            <Bookmark className="h-4 w-4" />
+          </Button>
         </div>
-        <Badge variant="secondary">{level}</Badge>
-        <p className="text-sm text-muted-foreground line-clamp-3">{description}</p>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          <p className="text-sm">{program.program_overview}</p>
+          
+          <div className="flex items-center text-sm text-muted-foreground">
+            <Clock className="mr-2 h-4 w-4" />
+            {program.duration}
+          </div>
+          
+          <div className="flex items-center text-sm text-muted-foreground">
+            <DollarSign className="mr-2 h-4 w-4" />
+            {program.fees.toLocaleString()} USD
+          </div>
+          
+          <div className="flex items-center text-sm text-muted-foreground">
+            <GraduationCap className="mr-2 h-4 w-4" />
+            {program.mode_of_delivery}
+          </div>
+          
+          <div className="mt-2">
+            <h4 className="text-sm font-medium mb-1">Eligibility</h4>
+            <div className="flex flex-wrap gap-1">
+              {program.eligibility_criteria.qualifications.map((qualification, index) => (
+                <Badge key={index} variant="outline" className="text-xs">
+                  {qualification}
+                </Badge>
+              ))}
+            </div>
+          </div>
+          
+          <div className="mt-2">
+            <h4 className="text-sm font-medium mb-1">Core Modules</h4>
+            <div className="flex flex-wrap gap-1">
+              {program.curriculum.core_modules.slice(0, 2).map((module, index) => (
+                <Badge key={index} variant="secondary" className="text-xs">
+                  {module.name}
+                </Badge>
+              ))}
+              {program.curriculum.core_modules.length > 2 && (
+                <Badge variant="secondary" className="text-xs">
+                  +{program.curriculum.core_modules.length - 2} more
+                </Badge>
+              )}
+            </div>
+          </div>
+          
+          {program.additional_notes && (
+            <div className="flex items-start text-sm text-muted-foreground mt-2">
+              <Info className="mr-2 h-4 w-4 mt-0.5 flex-shrink-0" />
+              <p>{program.additional_notes}</p>
+            </div>
+          )}
+        </div>
       </CardContent>
-      <CardFooter className="flex justify-between">
-        <Button variant="outline" size="sm">
-          <BookOpen className="h-4 w-4 mr-1" />
-          Details
-        </Button>
-        <Button size="sm">
-          <ExternalLink className="h-4 w-4 mr-1" />
-          Apply
-        </Button>
+      <CardFooter>
+        <Button className="w-full">Learn More</Button>
       </CardFooter>
     </Card>
   );

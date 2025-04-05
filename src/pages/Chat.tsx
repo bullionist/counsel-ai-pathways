@@ -1,195 +1,243 @@
-
-import { useState } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import ChatInterface from "@/components/ui/chat-interface";
+import { useState, useEffect, useRef } from "react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { BookOpen, Info, Lightbulb } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Send } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
+import PageLayout from "@/components/layout/PageLayout";
+import { api } from "@/services/auth";
+import StudentOnboardingForm from "@/components/StudentOnboardingForm";
 
-// Mock data for conversation history
-const initialConversation = [
-  {
-    id: "1",
-    role: "system" as const,
-    content: "Hello! I'm your AI Counselor. I can help you find the right academic programs based on your interests, background, and goals. What would you like to know today?",
-    timestamp: new Date(Date.now() - 1000 * 60 * 24)
-  },
-  {
-    id: "2",
-    role: "user" as const,
-    content: "I'm interested in studying computer science but not sure which specialization to choose.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 23)
-  },
-  {
-    id: "3",
-    role: "assistant" as const,
-    content: "That's great! Computer Science offers many exciting specializations. Based on current industry trends and your interests, you might consider:\n\n1. Artificial Intelligence & Machine Learning\n2. Cybersecurity\n3. Data Science\n4. Software Engineering\n5. Human-Computer Interaction\n\nCould you tell me a bit more about your interests or career goals so I can provide more tailored recommendations?",
-    timestamp: new Date(Date.now() - 1000 * 60 * 22)
-  }
-];
+interface Message {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: Date;
+}
+
+interface Student {
+  id: string;
+  name?: string;
+  email?: string;
+  academic_background?: string;
+  preferences?: string;
+  conversation_history?: Message[];
+}
 
 const Chat = () => {
-  const [messages, setMessages] = useState(initialConversation);
-  
-  const handleSendMessage = async (message: string) => {
-    // Here you would integrate with a real AI service
-    // For now, we'll simulate a response
-    return new Promise<void>((resolve) => {
-      setTimeout(() => {
-        const botMessage = {
-          id: Date.now().toString(),
-          role: "assistant" as const,
-          content: "I understand your interest in computer science. To provide more specific recommendations, could you share more about your previous academic background and any particular areas of computer science that interest you the most?",
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, botMessage]);
-        resolve();
-      }, 1500);
-    });
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [student, setStudent] = useState<Student | null>(null);
+  const [initializing, setInitializing] = useState(true);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    initializeStudent();
+  }, []);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
-  
-  return (
-    <div className="container py-8 animate-fade-in">
-      <div className="mb-8">
-        <h1 className="font-bold">AI Counselor</h1>
-        <p className="text-muted-foreground">
-          Chat with our AI counselor to get personalized program recommendations and guidance
-        </p>
-      </div>
+
+  const initializeStudent = async () => {
+    try {
+      // Try to get existing student ID from local storage
+      const storedStudentId = localStorage.getItem("studentId");
       
-      <div className="grid md:grid-cols-3 gap-8">
-        <div className="md:col-span-2">
-          <ChatInterface 
-            initialMessages={messages} 
-            onSendMessage={handleSendMessage} 
-          />
+      if (storedStudentId) {
+        // Get existing student profile
+        const response = await api.get(`/api/students/${storedStudentId}`);
+        setStudent(response.data);
+        if (response.data.conversation_history) {
+          setMessages(response.data.conversation_history);
+        } else {
+          // Add welcome message for existing students without conversation history
+          setMessages([
+            {
+              id: "welcome",
+              role: "assistant",
+              content: "Welcome back! How can I help you today?",
+              timestamp: new Date(),
+            },
+          ]);
+        }
+      } else {
+        // Show onboarding form for new students
+        setShowOnboarding(true);
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to initialize chat. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setInitializing(false);
+    }
+  };
+
+  const handleOnboardingComplete = async (studentId: string) => {
+    try {
+      const response = await api.get(`/api/students/${studentId}`);
+      setStudent(response.data);
+      setShowOnboarding(false);
+      
+      // Add welcome message
+      setMessages([
+        {
+          id: "welcome",
+          role: "assistant",
+          content: `Hello ${response.data.name}! I'm your AI counselor. I can help you explore academic programs and make informed decisions about your education. I see you're interested in ${response.data.preferences}. Would you like to explore some programs in this area?`,
+          timestamp: new Date(),
+        },
+      ]);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load student profile. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!input.trim() || !student) return;
+    
+    const userMessage = {
+      id: Date.now().toString(),
+      role: "user" as const,
+      content: input.trim(),
+      timestamp: new Date(),
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setInput("");
+    setLoading(true);
+
+    try {
+      // First, analyze the student input for profile enhancement
+      await api.post(`/api/students/${student.id}/analyze`, {
+        text: userMessage.content,
+      });
+
+      // Then, send the message to get AI response
+      const response = await api.post(`/api/students/${student.id}/chat`, {
+        message: userMessage.content,
+      });
+
+      const assistantMessage = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant" as const,
+        content: response.data.response,
+        timestamp: new Date(),
+      };
+
+      setMessages((prev) => [...prev, assistantMessage]);
+
+      // If the AI suggests getting recommendations, fetch them
+      if (response.data.should_get_recommendations) {
+        const recommendationsResponse = await api.get(`/api/students/${student.id}/recommendations`);
+        if (recommendationsResponse.data.recommendations?.length > 0) {
+          const recommendationsMessage = {
+            id: (Date.now() + 2).toString(),
+            role: "assistant" as const,
+            content: "Based on our conversation, here are some program recommendations for you:\n\n" +
+              recommendationsResponse.data.recommendations
+                .map((rec: any) => `• ${rec.program_title} at ${rec.institution}`)
+                .join("\n"),
+            timestamp: new Date(),
+          };
+          setMessages((prev) => [...prev, recommendationsMessage]);
+        }
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to send message. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (initializing) {
+    return (
+      <PageLayout>
+        <div className="container py-8">
+          <div className="text-center">Initializing chat...</div>
         </div>
-        
-        <div className="space-y-6">
-          <Tabs defaultValue="tips">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="tips">Tips</TabsTrigger>
-              <TabsTrigger value="info">Info</TabsTrigger>
-              <TabsTrigger value="explore">Explore</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="tips" className="space-y-4">
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-start mb-4">
-                    <Lightbulb className="h-5 w-5 mr-2 mt-0.5 text-yellow-500" />
-                    <div>
-                      <h3 className="text-sm font-medium">Be Specific</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Provide details about your academic background, interests, and goals for better recommendations
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-start mb-4">
-                    <Lightbulb className="h-5 w-5 mr-2 mt-0.5 text-yellow-500" />
-                    <div>
-                      <h3 className="text-sm font-medium">Ask Follow-up Questions</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Don't hesitate to ask for clarification or more details about programs
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-start">
-                    <Lightbulb className="h-5 w-5 mr-2 mt-0.5 text-yellow-500" />
-                    <div>
-                      <h3 className="text-sm font-medium">Share Your Constraints</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Mention any constraints like location, budget, or time commitment
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardContent className="pt-6">
-                  <h3 className="text-sm font-medium mb-2">Sample Questions</h3>
-                  <ul className="space-y-2 text-sm text-muted-foreground">
-                    <li className="cursor-pointer hover:text-primary">
-                      "What are the top computer science programs in the Northeast?"
-                    </li>
-                    <li className="cursor-pointer hover:text-primary">
-                      "I want to study data science. What prerequisites should I focus on?"
-                    </li>
-                    <li className="cursor-pointer hover:text-primary">
-                      "Compare MBA programs vs. specialized business masters"
-                    </li>
-                    <li className="cursor-pointer hover:text-primary">
-                      "What scholarships are available for international students?"
-                    </li>
-                  </ul>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="info">
-              <Card>
-                <CardContent className="pt-6 space-y-4">
-                  <div className="flex items-start">
-                    <Info className="h-5 w-5 mr-2 mt-0.5 text-counsel-600" />
-                    <div>
-                      <h3 className="text-sm font-medium">About AI Counselor</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Our AI counselor is trained on comprehensive educational data including programs, 
-                        admission requirements, career outcomes, and more.
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-start">
-                    <Info className="h-5 w-5 mr-2 mt-0.5 text-counsel-600" />
-                    <div>
-                      <h3 className="text-sm font-medium">Personalized Guidance</h3>
-                      <p className="text-sm text-muted-foreground">
-                        The more you interact with the AI, the better it understands your needs 
-                        and can provide tailored recommendations.
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-start">
-                    <Info className="h-5 w-5 mr-2 mt-0.5 text-counsel-600" />
-                    <div>
-                      <h3 className="text-sm font-medium">Privacy</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Your conversations are stored securely and used only to improve your 
-                        counseling experience.
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="explore">
-              <Card>
-                <CardContent className="pt-6">
-                  <h3 className="text-sm font-medium mb-4">Explore Topics</h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    {["Undergraduate Programs", "Graduate Programs", "Scholarships", "Admissions Process", 
-                      "Career Paths", "Test Preparation", "Study Abroad", "Research Opportunities"].map((topic) => (
-                      <div 
-                        key={topic} 
-                        className="flex items-center p-2 rounded-md border hover:bg-muted cursor-pointer"
-                      >
-                        <BookOpen className="h-4 w-4 mr-2 text-counsel-600" />
-                        <span className="text-sm">{topic}</span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+      </PageLayout>
+    );
+  }
+
+  if (showOnboarding) {
+    return (
+      <PageLayout>
+        <div className="container py-8">
+          <StudentOnboardingForm onComplete={handleOnboardingComplete} />
         </div>
+      </PageLayout>
+    );
+  }
+
+  return (
+    <PageLayout>
+      <div className="container py-8">
+        <Card className="h-[calc(100vh-12rem)]">
+          <CardContent className="p-6 h-full flex flex-col">
+            <ScrollArea className="flex-1 pr-4">
+              <div className="space-y-4">
+                {messages.map((message) => (
+                  <div
+                    key={message.id}
+                    className={`flex ${
+                      message.role === "assistant" ? "justify-start" : "justify-end"
+                    }`}
+                  >
+                    <div
+                      className={`rounded-lg px-4 py-2 max-w-[80%] ${
+                        message.role === "assistant"
+                          ? "bg-muted"
+                          : "bg-primary text-primary-foreground"
+                      }`}
+                    >
+                      <p className="whitespace-pre-wrap">{message.content}</p>
+                      <p className="text-xs mt-1 opacity-70">
+                        {new Date(message.timestamp).toLocaleTimeString()}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+                <div ref={messagesEndRef} />
+              </div>
+            </ScrollArea>
+
+            <form onSubmit={handleSubmit} className="mt-4 flex gap-2">
+              <Input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Type your message..."
+                disabled={loading}
+              />
+              <Button type="submit" disabled={loading || !input.trim()}>
+                <Send className="h-4 w-4" />
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
       </div>
-    </div>
+    </PageLayout>
   );
 };
 

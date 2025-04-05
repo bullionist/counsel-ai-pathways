@@ -11,6 +11,7 @@ import ProtectedAdminRoute from "./components/ProtectedAdminRoute";
 import Programs from "./pages/Programs";
 import ProgramForm from "@/pages/ProgramForm";
 import AdminDashboard from "./pages/AdminDashboard";
+import ProgramDetails from "./pages/ProgramDetails";
 
 const queryClient = new QueryClient();
 
@@ -44,6 +45,7 @@ const App = () => (
             }
           />
           <Route path="/admin/programs/new" element={<ProtectedAdminRoute><ProgramForm /></ProtectedAdminRoute>} />
+          <Route path="/admin/programs/:id" element={<ProtectedAdminRoute><ProgramDetails /></ProtectedAdminRoute>} />
           <Route path="/admin/programs/:id/edit" element={<ProtectedAdminRoute><ProgramForm /></ProtectedAdminRoute>} />
           
           {/* Catch-all route */}

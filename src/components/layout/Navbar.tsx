@@ -1,8 +1,23 @@
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
-import { BookOpen, Menu, Lock } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { BookOpen, Menu, Lock, LogOut } from "lucide-react";
+import { isAdminAuthenticated, logoutAdmin } from "@/services/auth";
+import { useToast } from "@/components/ui/use-toast";
 
 const Navbar = () => {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const isAdmin = isAdminAuthenticated();
+
+  const handleLogout = () => {
+    logoutAdmin();
+    toast({
+      title: "Success",
+      description: "Successfully logged out",
+    });
+    navigate("/");
+  };
+
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur">
       <div className="container flex h-16 items-center justify-between py-4">
@@ -14,13 +29,19 @@ const Navbar = () => {
         </div>
         
         <div className="flex items-center gap-4">
-          {/* Admin Login Link */}
-          <Button variant="ghost" size="sm" asChild>
-            <Link to="/admin/login" className="flex items-center gap-2">
-              <Lock className="h-4 w-4" />
-              Admin Login
-            </Link>
-          </Button>
+          {isAdmin ? (
+            <Button variant="ghost" size="sm" onClick={handleLogout} className="flex items-center gap-2">
+              <LogOut className="h-4 w-4" />
+              Logout
+            </Button>
+          ) : (
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/admin/login" className="flex items-center gap-2">
+                <Lock className="h-4 w-4" />
+                Admin Login
+              </Link>
+            </Button>
+          )}
           
           <Button 
             variant="ghost" 

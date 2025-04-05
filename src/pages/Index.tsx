@@ -1,7 +1,6 @@
-
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { BookOpen, MessageSquare, School, User, Award, ChevronRight, BarChart } from "lucide-react";
+import { BookOpen, MessageSquare, School, Award, ChevronRight, BarChart } from "lucide-react";
 import PageLayout from "@/components/layout/PageLayout";
 
 const Index = () => {
@@ -18,15 +17,9 @@ const Index = () => {
           </p>
           <div className="flex flex-col sm:flex-row gap-4">
             <Button size="lg" asChild>
-              <Link to="/dashboard">
-                Get Started
-                <ChevronRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
-            <Button size="lg" variant="outline" asChild>
               <Link to="/chat">
-                <MessageSquare className="mr-2 h-4 w-4" />
                 Chat with AI Counselor
+                <MessageSquare className="ml-2 h-4 w-4" />
               </Link>
             </Button>
           </div>
@@ -53,11 +46,6 @@ const Index = () => {
           
           <div className="grid md:grid-cols-3 gap-8">
             <FeatureCard 
-              icon={<User className="h-10 w-10 text-counsel-600" />}
-              title="Create Your Profile"
-              description="Share your academic background, test scores, and preferences to help our AI understand your needs."
-            />
-            <FeatureCard 
               icon={<MessageSquare className="h-10 w-10 text-counsel-600" />}
               title="Chat with AI Counselor"
               description="Engage in natural conversations with our AI to explore educational options and receive guidance."
@@ -66,6 +54,11 @@ const Index = () => {
               icon={<Award className="h-10 w-10 text-counsel-600" />}
               title="Get Recommendations"
               description="Receive personalized program recommendations based on your profile and conversations."
+            />
+            <FeatureCard 
+              icon={<School className="h-10 w-10 text-counsel-600" />}
+              title="Explore Programs"
+              description="Discover academic programs that match your interests, qualifications, and career goals."
             />
           </div>
         </div>
@@ -122,8 +115,8 @@ const Index = () => {
           
           <div className="text-center mt-10">
             <Button asChild>
-              <Link to="/programs">
-                Explore All Programs
+              <Link to="/chat">
+                Start Chatting with AI
                 <ChevronRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
@@ -163,19 +156,13 @@ const Index = () => {
         <div className="container text-center">
           <h2 className="text-3xl font-bold mb-6">Ready to Find Your Academic Path?</h2>
           <p className="text-counsel-100 max-w-2xl mx-auto mb-8">
-            Create your profile today and start chatting with our AI counselor to discover educational opportunities tailored to your needs.
+            Start chatting with our AI counselor today to discover educational opportunities tailored to your needs.
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <Button size="lg" variant="secondary" asChild>
-              <Link to="/dashboard">
-                Get Started
-                <ChevronRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
-            <Button size="lg" variant="outline" className="bg-transparent text-white hover:text-counsel-600" asChild>
               <Link to="/chat">
-                <MessageSquare className="mr-2 h-4 w-4" />
                 Chat with AI Counselor
+                <MessageSquare className="ml-2 h-4 w-4" />
               </Link>
             </Button>
           </div>
@@ -195,7 +182,7 @@ const FeatureCard = ({ icon, title, description }: { icon: React.ReactNode, titl
 );
 
 const ProgramCategoryCard = ({ icon, title, count, color }: { icon: React.ReactNode, title: string, count: number, color: string }) => (
-  <Link to="/programs" className="block">
+  <Link to="/chat" className="block">
     <div className="flex items-center p-6 rounded-lg border bg-white shadow-sm hover:shadow-md transition-shadow">
       <div className={`p-3 rounded-full mr-4 ${color}`}>{icon}</div>
       <div>

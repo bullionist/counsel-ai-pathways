@@ -1,20 +1,12 @@
 import api from '@/lib/api';
 
-export interface Module {
-  name: string;
-  description: string;
-  credits: number;
-}
-
 export interface Curriculum {
-  core_modules: Module[];
-  elective_modules: Module[];
+  description: string;
+  modules: string[];
 }
 
-export interface EligibilityCriteria {
-  qualifications: string[];
-  experience: string;
-  age_limit: string;
+export interface Requirements {
+  academic_requirements: string[];
   other_requirements: string[];
 }
 
@@ -23,14 +15,15 @@ export interface Program {
   program_title: string;
   institution: string;
   program_overview: string;
-  eligibility_criteria: EligibilityCriteria;
-  duration: string;
-  fees: number;
-  curriculum: Curriculum;
-  mode_of_delivery: string;
-  application_details: string;
   location: string;
-  additional_notes: string;
+  program_type: string;
+  field_of_study: string;
+  budget: number;
+  duration: string;
+  curriculum: Curriculum;
+  requirements: Requirements;
+  created_at: string;
+  updated_at: string;
 }
 
 export const programService = {

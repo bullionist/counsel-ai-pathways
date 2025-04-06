@@ -6,46 +6,33 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Plus, X } from "lucide-react";
+import { ArrowLeft, Plus, X, FileText } from "lucide-react";
 import { api } from "@/services/auth";
 import { useToast } from "@/components/ui/use-toast";
 import PageLayout from "@/components/layout/PageLayout";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 
 interface Program {
   id: string;
   program_title: string;
   institution: string;
   program_overview: string;
-  eligibility_criteria: {
-    qualifications: string[];
-    experience?: string;
-    age_limit?: string;
+  location: string;
+  program_type: string;
+  field_of_study: string;
+  budget: number;
+  duration: string;
+  curriculum: {
+    description: string;
+    modules: string[];
+  };
+  requirements: {
+    academic_requirements: string[];
     other_requirements: string[];
   };
-  duration: string;
-  fees: number;
-  curriculum: {
-    core_modules: Array<{
-      name: string;
-      description?: string;
-      credits?: number;
-    }>;
-    elective_modules?: Array<{
-      name: string;
-      description?: string;
-      credits?: number;
-    }>;
-  };
-  mode_of_delivery: string;
-  application_details: string;
-  location: string;
-  additional_notes?: string;
-}
-
-interface Module {
-  name: string;
-  description?: string;
-  credits?: number;
+  created_at: string;
+  updated_at: string;
 }
 
 const ProgramForm = () => {
@@ -61,26 +48,49 @@ const ProgramForm = () => {
   const [programTitle, setProgramTitle] = useState("");
   const [institution, setInstitution] = useState("");
   const [programOverview, setProgramOverview] = useState("");
-  const [duration, setDuration] = useState("");
-  const [fees, setFees] = useState("");
-  const [modeOfDelivery, setModeOfDelivery] = useState("");
   const [location, setLocation] = useState("");
-  const [applicationDetails, setApplicationDetails] = useState("");
-  const [additionalNotes, setAdditionalNotes] = useState("");
-  
-  // Eligibility criteria
-  const [qualifications, setQualifications] = useState<string[]>([]);
-  const [newQualification, setNewQualification] = useState("");
-  const [experience, setExperience] = useState("");
-  const [ageLimit, setAgeLimit] = useState("");
-  const [otherRequirements, setOtherRequirements] = useState<string[]>([]);
-  const [newRequirement, setNewRequirement] = useState("");
+  const [programType, setProgramType] = useState("");
+  const [fieldOfStudy, setFieldOfStudy] = useState("");
+  const [budget, setBudget] = useState("");
+  const [duration, setDuration] = useState("");
   
   // Curriculum
-  const [coreModules, setCoreModules] = useState<Module[]>([]);
-  const [newCoreModule, setNewCoreModule] = useState<Module>({ name: "", description: "", credits: undefined });
-  const [electiveModules, setElectiveModules] = useState<Module[]>([]);
-  const [newElectiveModule, setNewElectiveModule] = useState<Module>({ name: "", description: "", credits: undefined });
+  const [curriculumDescription, setCurriculumDescription] = useState("");
+  const [modules, setModules] = useState<string[]>([]);
+  const [newModule, setNewModule] = useState("");
+  
+  // Requirements
+  const [academicRequirements, setAcademicRequirements] = useState<string[]>([]);
+  const [newAcademicRequirement, setNewAcademicRequirement] = useState("");
+  const [otherRequirements, setOtherRequirements] = useState<string[]>([]);
+  const [newOtherRequirement, setNewOtherRequirement] = useState("");
+  
+  // Add this constant for the list of countries
+  const popularCountries = [
+    "United States",
+    "United Kingdom",
+    "Canada",
+    "Australia",
+    "Germany",
+    "New Zealand",
+    "Singapore",
+    "Ireland",
+    "Netherlands",
+    "Japan"
+  ];
+
+  const popularFieldsOfStudy = [
+    "Computer Science",
+    "Business Administration",
+    "Engineering",
+    "Data Science",
+    "Medicine",
+    "Law",
+    "Psychology",
+    "Environmental Science",
+    "International Relations",
+    "Architecture"
+  ];
   
   useEffect(() => {
     if (isEditing) {
@@ -100,22 +110,19 @@ const ProgramForm = () => {
       setProgramTitle(program.program_title);
       setInstitution(program.institution);
       setProgramOverview(program.program_overview);
-      setDuration(program.duration);
-      setFees(program.fees.toString());
-      setModeOfDelivery(program.mode_of_delivery);
       setLocation(program.location);
-      setApplicationDetails(program.application_details);
-      setAdditionalNotes(program.additional_notes || "");
-      
-      // Set eligibility criteria
-      setQualifications(program.eligibility_criteria.qualifications);
-      setExperience(program.eligibility_criteria.experience || "");
-      setAgeLimit(program.eligibility_criteria.age_limit || "");
-      setOtherRequirements(program.eligibility_criteria.other_requirements);
+      setProgramType(program.program_type);
+      setFieldOfStudy(program.field_of_study);
+      setBudget(program.budget.toString());
+      setDuration(program.duration);
       
       // Set curriculum
-      setCoreModules(program.curriculum.core_modules);
-      setElectiveModules(program.curriculum.elective_modules || []);
+      setCurriculumDescription(program.curriculum.description);
+      setModules(program.curriculum.modules);
+      
+      // Set requirements
+      setAcademicRequirements(program.requirements.academic_requirements);
+      setOtherRequirements(program.requirements.other_requirements);
     } catch (error) {
       toast({
         title: "Error",
@@ -127,54 +134,43 @@ const ProgramForm = () => {
     }
   };
   
-  const handleAddQualification = () => {
-    if (newQualification.trim()) {
-      setQualifications([...qualifications, newQualification.trim()]);
-      setNewQualification("");
+  const handleAddModule = () => {
+    if (newModule.trim()) {
+      setModules([...modules, newModule.trim()]);
+      setNewModule("");
     }
   };
   
-  const handleRemoveQualification = (index: number) => {
-    setQualifications(qualifications.filter((_, i) => i !== index));
+  const handleRemoveModule = (index: number) => {
+    setModules(modules.filter((_, i) => i !== index));
   };
   
-  const handleAddRequirement = () => {
-    if (newRequirement.trim()) {
-      setOtherRequirements([...otherRequirements, newRequirement.trim()]);
-      setNewRequirement("");
+  const handleAddAcademicRequirement = () => {
+    if (newAcademicRequirement.trim()) {
+      setAcademicRequirements([...academicRequirements, newAcademicRequirement.trim()]);
+      setNewAcademicRequirement("");
     }
   };
   
-  const handleRemoveRequirement = (index: number) => {
+  const handleRemoveAcademicRequirement = (index: number) => {
+    setAcademicRequirements(academicRequirements.filter((_, i) => i !== index));
+  };
+  
+  const handleAddOtherRequirement = () => {
+    if (newOtherRequirement.trim()) {
+      setOtherRequirements([...otherRequirements, newOtherRequirement.trim()]);
+      setNewOtherRequirement("");
+    }
+  };
+  
+  const handleRemoveOtherRequirement = (index: number) => {
     setOtherRequirements(otherRequirements.filter((_, i) => i !== index));
-  };
-  
-  const handleAddCoreModule = () => {
-    if (newCoreModule.name.trim()) {
-      setCoreModules([...coreModules, { ...newCoreModule }]);
-      setNewCoreModule({ name: "", description: "", credits: undefined });
-    }
-  };
-  
-  const handleRemoveCoreModule = (index: number) => {
-    setCoreModules(coreModules.filter((_, i) => i !== index));
-  };
-  
-  const handleAddElectiveModule = () => {
-    if (newElectiveModule.name.trim()) {
-      setElectiveModules([...electiveModules, { ...newElectiveModule }]);
-      setNewElectiveModule({ name: "", description: "", credits: undefined });
-    }
-  };
-  
-  const handleRemoveElectiveModule = (index: number) => {
-    setElectiveModules(electiveModules.filter((_, i) => i !== index));
   };
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!programTitle || !institution || !programOverview || !duration || !fees || !modeOfDelivery || !location || !applicationDetails) {
+    if (!programTitle || !institution || !programOverview || !location || !programType || !fieldOfStudy || !budget || !duration) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
@@ -183,10 +179,10 @@ const ProgramForm = () => {
       return;
     }
     
-    if (coreModules.length === 0) {
+    if (modules.length === 0) {
       toast({
         title: "Error",
-        description: "Please add at least one core module",
+        description: "Please add at least one module",
         variant: "destructive",
       });
       return;
@@ -199,22 +195,19 @@ const ProgramForm = () => {
         program_title: programTitle,
         institution,
         program_overview: programOverview,
-        eligibility_criteria: {
-          qualifications,
-          experience: experience || undefined,
-          age_limit: ageLimit || undefined,
-          other_requirements: otherRequirements,
-        },
-        duration,
-        fees: parseFloat(fees),
-        curriculum: {
-          core_modules: coreModules,
-          elective_modules: electiveModules.length > 0 ? electiveModules : undefined,
-        },
-        mode_of_delivery: modeOfDelivery,
-        application_details: applicationDetails,
         location,
-        additional_notes: additionalNotes || undefined,
+        program_type: programType,
+        field_of_study: fieldOfStudy,
+        budget: parseInt(budget),
+        duration,
+        curriculum: {
+          description: curriculumDescription,
+          modules
+        },
+        requirements: {
+          academic_requirements: academicRequirements,
+          other_requirements: otherRequirements
+        }
       };
       
       if (isEditing) {
@@ -243,6 +236,43 @@ const ProgramForm = () => {
     }
   };
   
+  const populateSampleData = () => {
+    setProgramTitle("Master of Science in Computer Science");
+    setInstitution("University of California, Berkeley");
+    setProgramOverview("A comprehensive program designed to prepare students for advanced careers in computer science. The curriculum covers theoretical foundations and practical applications in areas such as artificial intelligence, machine learning, and software engineering.");
+    setLocation("United States");
+    setProgramType("postgraduate");
+    setFieldOfStudy("Computer Science");
+    setBudget("45000");
+    setDuration("2 years");
+    setCurriculumDescription("The curriculum provides a strong foundation in computer science fundamentals while allowing students to specialize in areas of interest.");
+    setModules([
+      "Advanced Algorithms",
+      "Machine Learning",
+      "Distributed Systems",
+      "Software Engineering",
+      "Database Systems",
+      "Computer Networks"
+    ]);
+    setAcademicRequirements([
+      "Bachelor's degree in Computer Science or related field",
+      "Minimum GPA of 3.0",
+      "GRE scores (optional for 2024-2025)",
+      "Programming proficiency in at least one language"
+    ]);
+    setOtherRequirements([
+      "Statement of Purpose",
+      "Letters of Recommendation",
+      "Resume/CV",
+      "English proficiency (TOEFL/IELTS)"
+    ]);
+    
+    toast({
+      title: "Sample Data Loaded",
+      description: "Form has been populated with sample program data",
+    });
+  };
+  
   if (loading) {
     return (
       <PageLayout>
@@ -256,412 +286,281 @@ const ProgramForm = () => {
   return (
     <PageLayout>
       <div className="container py-8">
-        <div className="mb-6">
-          <Button variant="ghost" asChild className="mb-4">
-            <Link to="/admin/dashboard">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Dashboard
-            </Link>
-          </Button>
-          
+        <div className="flex items-center gap-4 mb-8">
+          <Link to="/admin/dashboard">
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
           <h1 className="text-3xl font-bold">
-            {isEditing ? "Edit Program" : "Add New Program"}
+            {isEditing ? "Edit Program" : "Create Program"}
           </h1>
         </div>
         
-        <form onSubmit={handleSubmit}>
-          <Tabs defaultValue="basic" className="w-full">
-            <TabsList className="mb-6">
-              <TabsTrigger value="basic">Basic Information</TabsTrigger>
-              <TabsTrigger value="eligibility">Eligibility</TabsTrigger>
-              <TabsTrigger value="curriculum">Curriculum</TabsTrigger>
-              <TabsTrigger value="application">Application</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="basic">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Basic Information</CardTitle>
-                  <CardDescription>
-                    Enter the basic details of the program
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="programTitle">Program Title *</Label>
-                        <Input
-                          id="programTitle"
-                          value={programTitle}
-                          onChange={(e) => setProgramTitle(e.target.value)}
-                          required
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="institution">Institution *</Label>
-                        <Input
-                          id="institution"
-                          value={institution}
-                          onChange={(e) => setInstitution(e.target.value)}
-                          required
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="programOverview">Program Overview *</Label>
-                      <Textarea
-                        id="programOverview"
-                        value={programOverview}
-                        onChange={(e) => setProgramOverview(e.target.value)}
-                        required
-                        rows={4}
-                      />
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="duration">Duration *</Label>
-                        <Input
-                          id="duration"
-                          value={duration}
-                          onChange={(e) => setDuration(e.target.value)}
-                          required
-                          placeholder="e.g., 2 years"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="fees">Fees ($) *</Label>
-                        <Input
-                          id="fees"
-                          type="number"
-                          value={fees}
-                          onChange={(e) => setFees(e.target.value)}
-                          required
-                          min="0"
-                          step="0.01"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="modeOfDelivery">Mode of Delivery *</Label>
-                        <Input
-                          id="modeOfDelivery"
-                          value={modeOfDelivery}
-                          onChange={(e) => setModeOfDelivery(e.target.value)}
-                          required
-                          placeholder="e.g., Full-time, Part-time, Online"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="location">Location *</Label>
-                        <Input
-                          id="location"
-                          value={location}
-                          onChange={(e) => setLocation(e.target.value)}
-                          required
-                          placeholder="e.g., New York, Online"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="additionalNotes">Additional Notes</Label>
-                      <Textarea
-                        id="additionalNotes"
-                        value={additionalNotes}
-                        onChange={(e) => setAdditionalNotes(e.target.value)}
-                        rows={3}
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="eligibility">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Eligibility Criteria</CardTitle>
-                  <CardDescription>
-                    Define the eligibility requirements for the program
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
-                    <div className="space-y-2">
-                      <Label>Qualifications *</Label>
-                      <div className="flex gap-2">
-                        <Input
-                          value={newQualification}
-                          onChange={(e) => setNewQualification(e.target.value)}
-                          placeholder="Add a qualification"
-                        />
-                        <Button type="button" onClick={handleAddQualification}>
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      {qualifications.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">No qualifications added yet</p>
-                      ) : (
-                        <ul className="space-y-2">
-                          {qualifications.map((qualification, index) => (
-                            <li key={index} className="flex items-center justify-between p-2 border rounded-md">
-                              <span>{qualification}</span>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleRemoveQualification(index)}
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="experience">Experience</Label>
-                      <Input
-                        id="experience"
-                        value={experience}
-                        onChange={(e) => setExperience(e.target.value)}
-                        placeholder="e.g., 2 years of relevant work experience"
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="ageLimit">Age Limit</Label>
-                      <Input
-                        id="ageLimit"
-                        value={ageLimit}
-                        onChange={(e) => setAgeLimit(e.target.value)}
-                        placeholder="e.g., 18-25 years"
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label>Other Requirements</Label>
-                      <div className="flex gap-2">
-                        <Input
-                          value={newRequirement}
-                          onChange={(e) => setNewRequirement(e.target.value)}
-                          placeholder="Add a requirement"
-                        />
-                        <Button type="button" onClick={handleAddRequirement}>
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      {otherRequirements.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">No other requirements added yet</p>
-                      ) : (
-                        <ul className="space-y-2">
-                          {otherRequirements.map((requirement, index) => (
-                            <li key={index} className="flex items-center justify-between p-2 border rounded-md">
-                              <span>{requirement}</span>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleRemoveRequirement(index)}
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="curriculum">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Curriculum</CardTitle>
-                  <CardDescription>
-                    Define the core and elective modules of the program
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-8">
-                    <div className="space-y-4">
-                      <h3 className="text-lg font-medium">Core Modules *</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="coreModuleName">Module Name</Label>
-                          <Input
-                            id="coreModuleName"
-                            value={newCoreModule.name}
-                            onChange={(e) => setNewCoreModule({ ...newCoreModule, name: e.target.value })}
-                            placeholder="Module name"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="coreModuleDescription">Description</Label>
-                          <Input
-                            id="coreModuleDescription"
-                            value={newCoreModule.description}
-                            onChange={(e) => setNewCoreModule({ ...newCoreModule, description: e.target.value })}
-                            placeholder="Module description"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="coreModuleCredits">Credits</Label>
-                          <Input
-                            id="coreModuleCredits"
-                            type="number"
-                            value={newCoreModule.credits || ""}
-                            onChange={(e) => setNewCoreModule({ ...newCoreModule, credits: e.target.value ? parseInt(e.target.value) : undefined })}
-                            placeholder="Number of credits"
-                            min="0"
-                          />
-                        </div>
-                      </div>
-                      <Button type="button" onClick={handleAddCoreModule}>
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Core Module
-                      </Button>
-                      
-                      {coreModules.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">No core modules added yet</p>
-                      ) : (
-                        <div className="space-y-4 mt-4">
-                          {coreModules.map((module, index) => (
-                            <div key={index} className="border rounded-lg p-4">
-                              <div className="flex justify-between items-start">
-                                <div>
-                                  <h4 className="font-medium">{module.name}</h4>
-                                  {module.description && (
-                                    <p className="text-muted-foreground mt-1">{module.description}</p>
-                                  )}
-                                  {module.credits && (
-                                    <p className="text-sm text-muted-foreground mt-1">Credits: {module.credits}</p>
-                                  )}
-                                </div>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleRemoveCoreModule(index)}
-                                >
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="space-y-4">
-                      <h3 className="text-lg font-medium">Elective Modules</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="electiveModuleName">Module Name</Label>
-                          <Input
-                            id="electiveModuleName"
-                            value={newElectiveModule.name}
-                            onChange={(e) => setNewElectiveModule({ ...newElectiveModule, name: e.target.value })}
-                            placeholder="Module name"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="electiveModuleDescription">Description</Label>
-                          <Input
-                            id="electiveModuleDescription"
-                            value={newElectiveModule.description}
-                            onChange={(e) => setNewElectiveModule({ ...newElectiveModule, description: e.target.value })}
-                            placeholder="Module description"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="electiveModuleCredits">Credits</Label>
-                          <Input
-                            id="electiveModuleCredits"
-                            type="number"
-                            value={newElectiveModule.credits || ""}
-                            onChange={(e) => setNewElectiveModule({ ...newElectiveModule, credits: e.target.value ? parseInt(e.target.value) : undefined })}
-                            placeholder="Number of credits"
-                            min="0"
-                          />
-                        </div>
-                      </div>
-                      <Button type="button" onClick={handleAddElectiveModule}>
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Elective Module
-                      </Button>
-                      
-                      {electiveModules.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">No elective modules added yet</p>
-                      ) : (
-                        <div className="space-y-4 mt-4">
-                          {electiveModules.map((module, index) => (
-                            <div key={index} className="border rounded-lg p-4">
-                              <div className="flex justify-between items-start">
-                                <div>
-                                  <h4 className="font-medium">{module.name}</h4>
-                                  {module.description && (
-                                    <p className="text-muted-foreground mt-1">{module.description}</p>
-                                  )}
-                                  {module.credits && (
-                                    <p className="text-sm text-muted-foreground mt-1">Credits: {module.credits}</p>
-                                  )}
-                                </div>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleRemoveElectiveModule(index)}
-                                >
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="application">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Application Details</CardTitle>
-                  <CardDescription>
-                    Provide information about the application process
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="applicationDetails">Application Process *</Label>
-                      <Textarea
-                        id="applicationDetails"
-                        value={applicationDetails}
-                        onChange={(e) => setApplicationDetails(e.target.value)}
-                        required
-                        rows={6}
-                        placeholder="Describe the application process, required documents, deadlines, etc."
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+        {!isEditing && (
+          <div className="mb-6">
+            <Button 
+              variant="outline" 
+              onClick={populateSampleData}
+              className="flex items-center gap-2"
+            >
+              <FileText className="h-4 w-4" />
+              Populate Sample Data
+            </Button>
+          </div>
+        )}
+        
+        <form onSubmit={handleSubmit} className="space-y-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>Basic Information</CardTitle>
+              <CardDescription>
+                Provide the basic information about the program
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="programTitle">Program Title *</Label>
+                  <Input
+                    id="programTitle"
+                    value={programTitle}
+                    onChange={(e) => setProgramTitle(e.target.value)}
+                    required
+                    placeholder="Enter program title"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="institution">Institution *</Label>
+                  <Input
+                    id="institution"
+                    value={institution}
+                    onChange={(e) => setInstitution(e.target.value)}
+                    required
+                    placeholder="Enter institution name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="location">Location *</Label>
+                  <Select
+                    value={location}
+                    onValueChange={setLocation}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select country" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {popularCountries.map((country) => (
+                        <SelectItem key={country} value={country}>
+                          {country}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="programType">Program Type *</Label>
+                  <Select
+                    value={programType}
+                    onValueChange={setProgramType}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select program type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="undergraduate">Undergraduate</SelectItem>
+                      <SelectItem value="postgraduate">Postgraduate</SelectItem>
+                      <SelectItem value="phd">PhD</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="fieldOfStudy">Field of Study *</Label>
+                  <Select
+                    value={fieldOfStudy}
+                    onValueChange={setFieldOfStudy}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select field of study" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {popularFieldsOfStudy.map((field) => (
+                        <SelectItem key={field} value={field}>
+                          {field}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="budget">Budget (USD) *</Label>
+                  <Input
+                    id="budget"
+                    type="number"
+                    value={budget}
+                    onChange={(e) => setBudget(e.target.value)}
+                    required
+                    placeholder="Enter program budget"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="duration">Duration *</Label>
+                  <Input
+                    id="duration"
+                    value={duration}
+                    onChange={(e) => setDuration(e.target.value)}
+                    required
+                    placeholder="e.g., 4 years, 2 semesters"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="programOverview">Program Overview *</Label>
+                <Textarea
+                  id="programOverview"
+                  value={programOverview}
+                  onChange={(e) => setProgramOverview(e.target.value)}
+                  required
+                  rows={4}
+                  placeholder="Enter program overview"
+                />
+              </div>
+            </CardContent>
+          </Card>
           
-          <div className="flex justify-end mt-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>Curriculum</CardTitle>
+              <CardDescription>
+                Define the program's curriculum
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="curriculumDescription">Curriculum Description</Label>
+                <Textarea
+                  id="curriculumDescription"
+                  value={curriculumDescription}
+                  onChange={(e) => setCurriculumDescription(e.target.value)}
+                  rows={3}
+                  placeholder="Enter curriculum description"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Modules</Label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {modules.map((module, index) => (
+                    <Badge key={index} variant="secondary">
+                      {module}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-4 w-4 ml-1"
+                        onClick={() => handleRemoveModule(index)}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </Badge>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    value={newModule}
+                    onChange={(e) => setNewModule(e.target.value)}
+                    placeholder="Enter module name"
+                  />
+                  <Button
+                    type="button"
+                    onClick={handleAddModule}
+                    disabled={!newModule.trim()}
+                  >
+                    Add
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>Requirements</CardTitle>
+              <CardDescription>
+                Specify program requirements
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <Label>Academic Requirements</Label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {academicRequirements.map((requirement, index) => (
+                    <Badge key={index} variant="secondary">
+                      {requirement}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-4 w-4 ml-1"
+                        onClick={() => handleRemoveAcademicRequirement(index)}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </Badge>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    value={newAcademicRequirement}
+                    onChange={(e) => setNewAcademicRequirement(e.target.value)}
+                    placeholder="Enter academic requirement"
+                  />
+                  <Button
+                    type="button"
+                    onClick={handleAddAcademicRequirement}
+                    disabled={!newAcademicRequirement.trim()}
+                  >
+                    Add
+                  </Button>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Other Requirements</Label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {otherRequirements.map((requirement, index) => (
+                    <Badge key={index} variant="secondary">
+                      {requirement}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-4 w-4 ml-1"
+                        onClick={() => handleRemoveOtherRequirement(index)}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </Badge>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    value={newOtherRequirement}
+                    onChange={(e) => setNewOtherRequirement(e.target.value)}
+                    placeholder="Enter other requirement"
+                  />
+                  <Button
+                    type="button"
+                    onClick={handleAddOtherRequirement}
+                    disabled={!newOtherRequirement.trim()}
+                  >
+                    Add
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <div className="flex justify-end">
             <Button type="submit" disabled={saving}>
               {saving ? "Saving..." : isEditing ? "Update Program" : "Create Program"}
             </Button>

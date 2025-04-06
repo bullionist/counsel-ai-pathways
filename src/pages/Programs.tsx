@@ -1,109 +1,170 @@
 import { useState, useEffect } from "react";
-import { Input } from "@/components/ui/input";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent } from "@/components/ui/card";
-import { Search, Filter, BookOpen, Bookmark } from "lucide-react";
-import ProgramCard from "@/components/program/ProgramCard";
-import { programService, Program } from "@/services/programService";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { api } from "@/services/auth";
 import { useToast } from "@/components/ui/use-toast";
+import PageLayout from "@/components/layout/PageLayout";
+import { Badge } from "@/components/ui/badge";
+import { Search } from "lucide-react";
+
+interface Program {
+  id: string;
+  program_title: string;
+  institution: string;
+  program_overview: string;
+  location: string;
+  program_type: string;
+  field_of_study: string;
+  budget: number;
+  duration: string;
+  curriculum: {
+    description: string;
+    modules: string[];
+  };
+  requirements: {
+    academic_requirements: string[];
+    other_requirements: string[];
+  };
+  created_at: string;
+  updated_at: string;
+}
 
 const Programs = () => {
+  const { toast } = useToast();
   const [programs, setPrograms] = useState<Program[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const { toast } = useToast();
-
+  
   useEffect(() => {
-    loadPrograms();
+    fetchPrograms();
   }, []);
-
-  const loadPrograms = async () => {
+  
+  const fetchPrograms = async () => {
     try {
       setLoading(true);
-      console.log('Fetching programs...');
-      const data = await programService.getAllPrograms();
-      console.log('Received programs:', data);
-      setPrograms(data);
+      const response = await api.get("/api/programs");
+      setPrograms(response.data);
     } catch (error) {
-      console.error('Error fetching programs:', error);
       toast({
         title: "Error",
-        description: "Failed to load programs. Please try again later.",
+        description: "Failed to fetch programs",
         variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
   };
-
+  
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
-      loadPrograms();
+      fetchPrograms();
       return;
     }
-
+    
     try {
       setLoading(true);
-      console.log('Searching programs with query:', searchQuery);
-      const results = await programService.searchPrograms(searchQuery);
-      console.log('Search results:', results);
-      setPrograms(results);
+      const response = await api.get(`/api/programs/search?q=${encodeURIComponent(searchQuery)}`);
+      setPrograms(response.data);
     } catch (error) {
-      console.error('Error searching programs:', error);
       toast({
         title: "Error",
-        description: "Failed to search programs. Please try again later.",
+        description: "Failed to search programs",
         variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
   };
-
-  return (
-    <div className="container py-8">
-      <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-4">
-          <h1 className="text-3xl font-bold">Academic Programs</h1>
-          <p className="text-muted-foreground">
-            Explore and discover academic programs that match your interests and goals.
-          </p>
+  
+  const filteredPrograms = programs.filter(program => {
+    const searchLower = searchQuery.toLowerCase();
+    return (
+      program.program_title.toLowerCase().includes(searchLower) ||
+      program.institution.toLowerCase().includes(searchLower) ||
+      program.field_of_study.toLowerCase().includes(searchLower) ||
+      program.program_type.toLowerCase().includes(searchLower)
+    );
+  });
+  
+  if (loading) {
+    return (
+      <PageLayout>
+        <div className="container py-8">
+          <div className="text-center">Loading programs...</div>
         </div>
-
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1">
+      </PageLayout>
+    );
+  }
+  
+  return (
+    <PageLayout>
+      <div className="container py-8">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+          <h1 className="text-3xl font-bold">Academic Programs</h1>
+          <div className="flex gap-2 w-full md:w-auto">
             <Input
               placeholder="Search programs..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             />
+            <Button onClick={handleSearch}>
+              <Search className="h-4 w-4" />
+            </Button>
           </div>
-          <Button onClick={handleSearch}>
-            <Search className="mr-2 h-4 w-4" />
-            Search
-          </Button>
         </div>
-
-        {loading ? (
-          <div className="flex justify-center items-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-counsel-600"></div>
-          </div>
-        ) : programs.length === 0 ? (
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredPrograms.map((program) => (
+            <Link key={program.id} to={`/programs/${program.id}`}>
+              <Card className="h-full hover:bg-accent transition-colors">
+                <CardHeader>
+                  <CardTitle>{program.program_title}</CardTitle>
+                  <CardDescription>{program.institution}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap gap-2">
+                      <Badge variant="secondary" className="capitalize">
+                        {program.program_type}
+                      </Badge>
+                      <Badge variant="secondary">
+                        {program.field_of_study}
+                      </Badge>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Location:</span>
+                        <span>{program.location}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Duration:</span>
+                        <span>{program.duration}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Budget:</span>
+                        <span>${program.budget.toLocaleString()}</span>
+                      </div>
+                    </div>
+                    <p className="text-sm text-muted-foreground line-clamp-2">
+                      {program.program_overview}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+        
+        {filteredPrograms.length === 0 && (
           <div className="text-center py-8">
-            <p className="text-muted-foreground">No programs found.</p>
-          </div>
-        ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {programs.map((program) => (
-              <ProgramCard key={program.id} program={program} />
-            ))}
+            <p className="text-muted-foreground">No programs found</p>
           </div>
         )}
       </div>
-    </div>
+    </PageLayout>
   );
 };
 

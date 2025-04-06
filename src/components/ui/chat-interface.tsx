@@ -1,6 +1,5 @@
-
 import React, { useState, useRef, useEffect } from "react";
-import { Send, PaperclipIcon, Loader2 } from "lucide-react";
+import { Send, PaperclipIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -21,7 +20,6 @@ interface ChatInterfaceProps {
 const ChatInterface = ({ initialMessages = [], onSendMessage }: ChatInterfaceProps) => {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -44,31 +42,22 @@ const ChatInterface = ({ initialMessages = [], onSendMessage }: ChatInterfacePro
 
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
-    setIsLoading(true);
 
-    // Simulate AI response
     try {
       if (onSendMessage) {
         await onSendMessage(input);
       } else {
         // If no handler provided, simulate a response
-        setTimeout(() => {
-          const botMessage: Message = {
-            id: (Date.now() + 1).toString(),
-            role: "assistant",
-            content: "Thanks for your message! I'm analyzing your profile to provide personalized program recommendations based on your academic background, preferences, and goals. How can I help you today?",
-            timestamp: new Date(),
-          };
-          setMessages((prev) => [...prev, botMessage]);
-          setIsLoading(false);
-        }, 1500);
+        const botMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: "Thanks for your message! I'm analyzing your profile to provide personalized program recommendations based on your academic background, preferences, and goals. How can I help you today?",
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, botMessage]);
       }
     } catch (error) {
       console.error("Error sending message:", error);
-    } finally {
-      if (onSendMessage) {
-        setIsLoading(false);
-      }
     }
   };
 
@@ -142,20 +131,6 @@ const ChatInterface = ({ initialMessages = [], onSendMessage }: ChatInterfacePro
             </div>
           ))
         )}
-        {isLoading && (
-          <div className="flex items-start gap-3">
-            <Avatar className="h-8 w-8">
-              <AvatarImage src="/ai-avatar.png" />
-              <AvatarFallback className="bg-counsel-100 text-counsel-800">AI</AvatarFallback>
-            </Avatar>
-            <div className="rounded-lg p-3 bg-muted">
-              <div className="flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">Thinking...</span>
-              </div>
-            </div>
-          </div>
-        )}
         <div ref={messagesEndRef} />
       </div>
       
@@ -182,7 +157,7 @@ const ChatInterface = ({ initialMessages = [], onSendMessage }: ChatInterfacePro
               size="icon" 
               className="rounded-full"
               onClick={handleSend}
-              disabled={isLoading || input.trim() === ""}
+              disabled={input.trim() === ""}
             >
               <Send className="h-4 w-4" />
               <span className="sr-only">Send message</span>

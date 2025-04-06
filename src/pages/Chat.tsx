@@ -404,23 +404,34 @@ const Chat = () => {
     }
   };
 
-  const handleProfileUpdate = async (updatedData: any) => {
+  const handleProfileUpdate = async (data: any) => {
     try {
-      const response = await api.put(`/api/students/${student.id}/update`, updatedData);
+      setLoading(true);
+      const response = await api.put(`/api/students/${student.id}`, {
+        name: data.name,
+        email: data.email,
+        educational_qualifications: data.educational_qualifications,
+        preferred_location: data.preferred_location,
+        preferred_program: data.preferred_program,
+        preferred_field_of_study: data.preferred_field_of_study,
+        budget: parseInt(data.budget),
+        special_requirements: data.special_requirements || undefined
+      });
+      
       setStudent(response.data);
-      setIsEditing(false);
       toast({
         title: "Success",
         description: "Profile updated successfully!",
-        duration: 3000,
       });
+      setShowProfileDialog(false);
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.response?.data?.message || "Failed to update profile. Please try again.",
         variant: "destructive",
-        duration: 3000,
       });
+    } finally {
+      setLoading(false);
     }
   };
 
